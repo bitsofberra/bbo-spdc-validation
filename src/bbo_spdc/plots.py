@@ -288,3 +288,43 @@ def plot_power_scan_comparison(predictions: list[dict], output_path: str | Path)
     fig.savefig(output_path)
     plt.close(fig)
     return output_path
+
+
+def plot_polarization_comparison(predictions: list[dict], output_path: str | Path) -> Path:
+    _set_style()
+    alpha = np.array([row["alpha_deg"] for row in predictions], dtype=float)
+    beta = np.array([row["beta_deg"] for row in predictions], dtype=float)
+    measured = np.array([row["coincidence_counts"] for row in predictions], dtype=float)
+    predicted = np.array([row["predicted_coincidence_counts"] for row in predictions], dtype=float)
+    residual = measured - predicted
+
+    unique_alpha = np.array(sorted(set(alpha)))
+    unique_beta = np.array(sorted(set(beta)))
+
+    def grid(values):
+        matrix = np.full((len(unique_alpha), len(unique_beta)), np.nan)
+        for a, b, value in zip(alpha, beta, values):
+            i = int(np.where(unique_alpha == a)[0][0])
+            j = int(np.where(unique_beta == b)[0][0])
+            matrix[i, j] = value
+        return matrix
+
+    fig, axes = plt.subplots(1, 3, figsize=(12.2, 4.2))
+    panels = [
+        (grid(measured), "Measured coincidences", "viridis"),
+        (grid(predicted), "Fitted Bell-state model", "viridis"),
+        (grid(residual), "Residuals", "coolwarm"),
+    ]
+    extent = [unique_beta.min(), unique_beta.max(), unique_alpha.min(), unique_alpha.max()]
+    for ax, (matrix, title, cmap) in zip(axes, panels):
+        image = ax.imshow(matrix, origin="lower", aspect="auto", extent=extent, cmap=cmap)
+        ax.set_xlabel("Beta / PolB (deg)")
+        ax.set_ylabel("Alpha / PolA (deg)")
+        ax.set_title(title)
+        fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+
+    output_path = _prepare_output(output_path)
+    fig.tight_layout()
+    fig.savefig(output_path)
+    plt.close(fig)
+    return output_path

@@ -22,6 +22,23 @@ REQUIRED_POWER_SCAN_COLUMNS = {
     "Coincidence_Hz",
 }
 
+POLARIZATION_COLUMN_ALIASES = {
+    "PolA": "alpha_deg",
+    "PolB": "beta_deg",
+    "CountsA": "signal_counts",
+    "CountsB": "idler_counts",
+    "CountsAB": "coincidence_counts",
+    "alpha_deg": "alpha_deg",
+    "beta_deg": "beta_deg",
+    "signal_counts": "signal_counts",
+    "idler_counts": "idler_counts",
+    "coincidence_counts": "coincidence_counts",
+    "accidental_counts": "accidental_counts",
+    "integration_time_s": "integration_time_s",
+    "state": "state",
+    "source_table": "source_table",
+}
+
 
 def read_experimental_csv(path: str | Path) -> list[dict]:
     path = Path(path)
@@ -77,6 +94,39 @@ def read_power_scan_csv(path: str | Path) -> list[dict]:
     if missing:
         raise ValueError(f"Missing power-scan CSV columns: {sorted(missing)}")
     return [row for row in reader]
+
+
+def read_polarization_csv(path: str | Path) -> list[dict]:
+    """Read polarizer-angle coincidence data from supported CSV layouts."""
+
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(path)
+    clean_lines = [
+        line
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+    if not clean_lines:
+        return []
+    reader = csv.DictReader(StringIO("\n".join(clean_lines)))
+    if reader.fieldnames is None:
+        return []
+    rows = []
+    for raw_row in reader:
+        normalized = {}
+        for key, value in raw_row.items():
+            if key is None:
+                continue
+            normalized_key = POLARIZATION_COLUMN_ALIASES.get(key.strip())
+            if normalized_key and value not in (None, ""):
+                normalized[normalized_key] = value
+        required = {"alpha_deg", "beta_deg", "signal_counts", "idler_counts", "coincidence_counts"}
+        missing = required.difference(normalized)
+        if missing:
+            raise ValueError(f"Missing polarization CSV columns: {sorted(missing)}")
+        rows.append(normalized)
+    return rows
 
 
 def write_json(path: str | Path, data: dict) -> None:

@@ -12,6 +12,7 @@ from .counter import (
     predictions_for_rows,
 )
 from .data_io import (
+    read_polarization_csv,
     read_power_scan_csv,
     read_experimental_csv,
     write_csv,
@@ -19,6 +20,7 @@ from .data_io import (
     write_phase_matching_summary,
 )
 from .phase_matching import SPDCConfig, nm_to_wavelength_m, phase_matching_report
+from .polarization import compare_polarization_rows
 
 
 def _add_config_args(parser: argparse.ArgumentParser) -> None:
@@ -136,6 +138,26 @@ def run_compare_power(args: argparse.Namespace) -> None:
     )
 
 
+def run_compare_polarization(args: argparse.Namespace) -> None:
+    from .plots import plot_polarization_comparison
+
+    output = Path(args.out)
+    output.mkdir(parents=True, exist_ok=True)
+
+    rows = read_polarization_csv(args.polarization_data)
+    if not rows:
+        print("Polarization CSV has no rows.")
+        return
+
+    predictions, report = compare_polarization_rows(rows)
+    write_csv(output / "polarization_predictions.csv", predictions)
+    write_json(output / "polarization_report.json", {"polarization_fit": report})
+    plot_polarization_comparison(predictions, output / "polarization_comparison.png")
+    print(f"Wrote polarization comparison outputs to {output}")
+    print(f"Balanced Phi+ R^2: {report['ideal_phi_plus_r_squared']:.3f}")
+    print(f"Unbalanced Bell-state R^2: {report['r_squared']:.3f}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bbo-spdc",
@@ -176,6 +198,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     power_parser.add_argument("--out", default="outputs/compare_power")
     power_parser.set_defaults(func=run_compare_power)
+
+    polarization_parser = subparsers.add_parser(
+        "compare-polarization",
+        help="Compare polarizer-angle coincidences with a Phi+ Bell-state model.",
+    )
+    polarization_parser.add_argument(
+        "--polarization-data",
+        default="data/external/testing_reality_entanglement/data_allAngles.csv",
+        help="CSV with polarizer angles, singles counts, and coincidence counts.",
+    )
+    polarization_parser.add_argument("--out", default="outputs/compare_polarization")
+    polarization_parser.set_defaults(func=run_compare_polarization)
 
     return parser
 
