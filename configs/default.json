@@ -1,0 +1,8 @@
+{
+  "pump_wavelength_nm": 405.0,
+  "signal_wavelength_nm": 810.0,
+  "idler_wavelength_nm": 810.0,
+  "theta_deg": 28.95,
+  "crystal_length_mm": 2.0,
+  "pump_waist_um": 388.0
+}
