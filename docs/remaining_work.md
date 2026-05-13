@@ -47,8 +47,9 @@ If accidental counts are measured, subtract them and propagate their uncertainty
 ## Code Gaps
 
 - Add optional uncertainty columns to `compare`.
-- Add a reader/summary command for the Glasgow pixel-super-resolution archive.
 - Add a theta-scan plotting mode with error bars if a public angle-scan table is found.
+- Add a real ring-image comparison once a clean public experimental ring matrix is found
+  or digitized from an acceptable source.
 - Add a wavelength-scan comparison if the experimental data is spectral rather
   than angular.
 - Add a small Methods notebook or script that reproduces every thesis figure in

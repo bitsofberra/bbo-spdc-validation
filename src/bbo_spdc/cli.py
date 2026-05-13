@@ -21,6 +21,7 @@ from .data_io import (
 )
 from .phase_matching import SPDCConfig, nm_to_wavelength_m, phase_matching_report
 from .polarization import compare_polarization_rows
+from .ring import read_experimental_matrix, simulate_spdc_ring_image
 from .spatial_data import (
     read_zip_text_matrices,
     summarize_matrices,
@@ -61,6 +62,7 @@ def run_report(args: argparse.Namespace) -> None:
 def run_demo(args: argparse.Namespace) -> None:
     from .plots import (
         plot_counter_demo,
+        plot_ring_simulation,
         plot_sinc2_phase_matching,
         plot_theta_tuning_shift,
         plot_walkoff_effect,
@@ -77,6 +79,7 @@ def run_demo(args: argparse.Namespace) -> None:
     plot_walkoff_effect(config, output / "walkoff_effect.png")
     plot_theta_tuning_shift(config, output / "theta_tuning_shift.png")
     plot_counter_demo(config, output / "entangled_counter_demo.png")
+    plot_ring_simulation(simulate_spdc_ring_image(config), output / "spdc_ring_simulation.png")
 
     print(f"Wrote demo outputs to {output}")
     print(
@@ -185,6 +188,69 @@ def run_summarize_spatial(args: argparse.Namespace) -> None:
     print(f"Found {len(matrices)} experimental matrices")
 
 
+def _ring_from_args(args: argparse.Namespace):
+    config = _config_from_args(args)
+    return simulate_spdc_ring_image(
+        config,
+        detector_distance_mm=args.detector_distance_mm,
+        field_of_view_mm=args.field_of_view_mm,
+        pixels=args.pixels,
+        ring_width_mm=args.ring_width_mm,
+        azimuthal_modulation=args.azimuthal_modulation,
+    )
+
+
+def run_simulate_ring(args: argparse.Namespace) -> None:
+    from .plots import plot_ring_simulation
+
+    output = Path(args.out)
+    output.mkdir(parents=True, exist_ok=True)
+    ring = _ring_from_args(args)
+    plot_ring_simulation(ring, output / "spdc_ring_simulation.png")
+    write_json(
+        output / "spdc_ring_report.json",
+        {
+            "external_angle_deg": ring.external_angle_deg,
+            "detector_distance_mm": ring.detector_distance_mm,
+            "field_of_view_mm": ring.field_of_view_mm,
+            "ring_radius_mm": ring.radius_mm,
+            "ring_width_mm": ring.width_mm,
+            "walkoff_shift_mm": ring.walkoff_shift_mm,
+        },
+    )
+    print(f"Wrote simulated ring outputs to {output}")
+    print(f"External angle: {ring.external_angle_deg:.3f} deg")
+    print(f"Ring radius at detector: {ring.radius_mm:.3f} mm")
+
+
+def run_compare_ring(args: argparse.Namespace) -> None:
+    from .plots import plot_ring_comparison
+
+    output = Path(args.out)
+    output.mkdir(parents=True, exist_ok=True)
+    experiment = read_experimental_matrix(args.experimental_matrix)
+    args.pixels = int(experiment.shape[0])
+    ring = _ring_from_args(args)
+    _, metrics = plot_ring_comparison(
+        experiment,
+        ring,
+        output / "ring_experiment_vs_simulation.png",
+    )
+    write_json(
+        output / "ring_comparison_report.json",
+        {
+            "comparison": metrics,
+            "external_angle_deg": ring.external_angle_deg,
+            "ring_radius_mm": ring.radius_mm,
+            "ring_width_mm": ring.width_mm,
+            "walkoff_shift_mm": ring.walkoff_shift_mm,
+            "experimental_matrix_shape": list(experiment.shape),
+        },
+    )
+    print(f"Wrote ring comparison outputs to {output}")
+    print(f"Normalized RMSE: {metrics['rmse']:.3f}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bbo-spdc",
@@ -250,6 +316,36 @@ def build_parser() -> argparse.ArgumentParser:
     spatial_parser.add_argument("--out", default="outputs/summarize_spatial")
     spatial_parser.add_argument("--max-plots", type=int, default=6)
     spatial_parser.set_defaults(func=run_summarize_spatial)
+
+    ring_parser = subparsers.add_parser(
+        "simulate-ring",
+        help="Generate a 2D far-field SPDC ring image from the phase-matching model.",
+    )
+    _add_config_args(ring_parser)
+    ring_parser.add_argument("--out", default="outputs/ring")
+    ring_parser.add_argument("--detector-distance-mm", type=float, default=100.0)
+    ring_parser.add_argument("--field-of-view-mm", type=float, default=14.0)
+    ring_parser.add_argument("--pixels", type=int, default=420)
+    ring_parser.add_argument("--ring-width-mm", type=float, default=0.22)
+    ring_parser.add_argument("--azimuthal-modulation", type=float, default=0.08)
+    ring_parser.set_defaults(func=run_simulate_ring)
+
+    ring_compare_parser = subparsers.add_parser(
+        "compare-ring",
+        help="Compare an experimental ring/image matrix with the simulated ring.",
+    )
+    _add_config_args(ring_compare_parser)
+    ring_compare_parser.add_argument(
+        "--experimental-matrix",
+        required=True,
+        help="2D CSV/TXT/NPY/image file containing an experimental ring or camera image.",
+    )
+    ring_compare_parser.add_argument("--out", default="outputs/compare_ring")
+    ring_compare_parser.add_argument("--detector-distance-mm", type=float, default=100.0)
+    ring_compare_parser.add_argument("--field-of-view-mm", type=float, default=14.0)
+    ring_compare_parser.add_argument("--ring-width-mm", type=float, default=0.22)
+    ring_compare_parser.add_argument("--azimuthal-modulation", type=float, default=0.08)
+    ring_compare_parser.set_defaults(func=run_compare_ring)
 
     return parser
 

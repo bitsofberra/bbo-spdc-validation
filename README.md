@@ -29,6 +29,7 @@ This package turns those theory blocks into reproducible numerical outputs:
 - `sinc^2(Delta k L / 2)` phase-matching envelope
 - angular acceptance around the degenerate wavelength
 - non-collinear emission/ring-angle shift as the crystal angle changes
+- simulated far-field SPDC ring image
 - spatial walk-off and its effect on collection overlap
 - phenomenological photon-pair and coincidence-count predictions
 - polarization-entanglement comparison against real BBO SPDC data
@@ -43,6 +44,7 @@ This package turns those theory blocks into reproducible numerical outputs:
 | BBO birefringence | `bbo_spdc.sellmeier` | ordinary/extraordinary indices |
 | Sellmeier equations for BBO | `bbo_spdc.sellmeier` | wavelength-dependent refractive index |
 | Phase mismatch and `sinc^2` distribution | `bbo_spdc.phase_matching`, `bbo_spdc.plots` | phase-matching spectrum |
+| Non-collinear emission ring | `bbo_spdc.ring`, `bbo_spdc.plots` | 2D far-field ring image |
 | Spatial walk-off | `bbo_spdc.sellmeier`, `bbo_spdc.plots` | walk-off angle and lateral shift |
 | Detecting photon pairs | `bbo_spdc.counter`, `bbo_spdc.polarization` | singles/coincidence predictions |
 
@@ -69,6 +71,7 @@ This generates:
 - `walkoff_effect.png`
 - `theta_tuning_shift.png`
 - `entangled_counter_demo.png`
+- `spdc_ring_simulation.png`
 
 For the default 405 nm pump and degenerate 810/810 nm signal-idler wavelengths,
 the package currently finds a collinear Type-I BBO phase-matching angle of about
@@ -134,6 +137,26 @@ bbo-spdc summarize-spatial \
 
 This writes `spatial_matrix_summary.csv` and `spatial_matrix_examples.png`.
 
+## SPDC Ring Images
+
+To generate the simulated far-field ring image separately:
+
+```bash
+bbo-spdc simulate-ring --out outputs/ring_demo
+```
+
+If a public paper or supervisor provides an experimental ring image or matrix
+later, it can be compared with:
+
+```bash
+bbo-spdc compare-ring \
+  --experimental-matrix path/to/experimental_ring.csv \
+  --out outputs/compare_ring
+```
+
+Supported comparison inputs are 2D `.csv`, `.txt`, `.npy`, or common image
+files such as `.png` and `.jpg`.
+
 ### 2. Optional Custom Experimental Data
 
 If a supervisor later provides a small experimental table, place it in:
@@ -177,12 +200,13 @@ Implemented and tested:
 - BBO Sellmeier equations and effective extraordinary index
 - Type-I collinear phase-matching angle search
 - symmetric non-collinear emission-angle estimate
+- simulated 2D SPDC ring image and optional ring-image comparison
 - `sinc^2` finite-crystal phase-matching envelope
 - pump walk-off angle and lateral shift
 - photon-pair counter model with dark counts and accidentals
 - polarization coincidence model for `Phi+` and unbalanced correlated states
 - CLI commands for reports, demos, power-scan comparisons, polarization comparisons,
-  and spatial raw-data summaries
+  spatial raw-data summaries, and ring-image simulation/comparison
 - public real-data ingestion for BBO SPDC polarization and Type-I spatial datasets
 
 Automated tests:

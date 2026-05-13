@@ -9,7 +9,7 @@ therefore be built from public, citable BBO SPDC datasets.
 | --- | --- | --- | --- |
 | Testing Reality, "Entanglement and polarizers" | `data/external/testing_reality_entanglement/data_allAngles.csv` | Bell-state coincidence vs polarizer angle | Real BBO/SPDC public CSV; fit already implemented. |
 | EPJ Quantum Technology undergraduate Bell setup | `data/external/epj_undergraduate_bell/phi_plus_table11.csv` | Bell-state coincidence counts and tomography workflow | Real published table; fit already implemented. |
-| University of Glasgow pixel-super-resolution dataset | `data/external/glasgow_pixel_superresolution/Pixelsuperresolution.zip` | Type-I BBO spatial photon-pair measurements | Real raw figure data; needs a future reader/summary command. |
+| University of Glasgow pixel-super-resolution dataset | `data/external/glasgow_pixel_superresolution/Pixelsuperresolution.zip` | Type-I BBO spatial photon-pair measurements | Real raw figure data; summarized with `bbo-spdc summarize-spatial`. |
 
 ## Closest Phase-Matching Leads
 

@@ -28,6 +28,7 @@ from .phase_matching import (
     sinc2_spectrum,
 )
 from .sellmeier import walkoff_angle_rad
+from .ring import RingSimulation, normalize_image, ring_comparison_metrics
 
 
 def _prepare_output(path: str | Path) -> Path:
@@ -357,3 +358,105 @@ def plot_spatial_matrix_examples(
     fig.savefig(output_path)
     plt.close(fig)
     return output_path
+
+
+def _radial_profile(image: np.ndarray, x_mm: np.ndarray, y_mm: np.ndarray):
+    r = np.sqrt(x_mm**2 + y_mm**2)
+    bins = np.linspace(0.0, np.nanmax(r), 160)
+    centers = 0.5 * (bins[:-1] + bins[1:])
+    profile = np.zeros_like(centers)
+    for index in range(len(centers)):
+        mask = (r >= bins[index]) & (r < bins[index + 1])
+        profile[index] = np.nanmean(image[mask]) if np.any(mask) else np.nan
+    return centers, profile
+
+
+def plot_ring_simulation(ring: RingSimulation, output_path: str | Path) -> Path:
+    """Plot a simulated far-field Type-I SPDC ring."""
+
+    _set_style()
+    extent = [
+        -ring.field_of_view_mm / 2.0,
+        ring.field_of_view_mm / 2.0,
+        -ring.field_of_view_mm / 2.0,
+        ring.field_of_view_mm / 2.0,
+    ]
+    radial_mm, profile = _radial_profile(ring.image, ring.x_mm, ring.y_mm)
+
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(10.4, 4.4))
+    image = ax0.imshow(ring.image, origin="lower", extent=extent, cmap="magma")
+    ax0.set_title("Simulated SPDC ring")
+    ax0.set_xlabel("x at detector (mm)")
+    ax0.set_ylabel("y at detector (mm)")
+    fig.colorbar(image, ax=ax0, fraction=0.046, pad=0.04)
+
+    ax1.plot(radial_mm, profile, color="#7c3aed", linewidth=2.0)
+    ax1.axvline(ring.radius_mm, color="#111827", linestyle="--", linewidth=1.2)
+    ax1.set_title("Radial intensity profile")
+    ax1.set_xlabel("radius (mm)")
+    ax1.set_ylabel("normalized intensity")
+    ax1.text(
+        0.04,
+        0.94,
+        (
+            f"external angle: {ring.external_angle_deg:.3f} deg\n"
+            f"ring radius: {ring.radius_mm:.3f} mm\n"
+            f"walk-off shift: {ring.walkoff_shift_mm:.3f} mm"
+        ),
+        transform=ax1.transAxes,
+        va="top",
+        bbox={"facecolor": "white", "edgecolor": "#f3f4f6", "alpha": 0.88},
+    )
+
+    output_path = _prepare_output(output_path)
+    fig.tight_layout()
+    fig.savefig(output_path)
+    plt.close(fig)
+    return output_path
+
+
+def plot_ring_comparison(
+    experiment: np.ndarray,
+    ring: RingSimulation,
+    output_path: str | Path,
+) -> tuple[Path, dict]:
+    """Plot normalized experiment/simulation/residual ring comparison."""
+
+    _set_style()
+    experiment_norm = normalize_image(experiment)
+    simulation = ring.image
+    if simulation.shape != experiment_norm.shape:
+        comparison_ring = np.resize(simulation, experiment_norm.shape)
+    else:
+        comparison_ring = simulation
+    simulation_norm = normalize_image(comparison_ring)
+    residual = experiment_norm - simulation_norm
+    metrics = ring_comparison_metrics(experiment_norm, simulation_norm)
+
+    fig, axes = plt.subplots(1, 3, figsize=(12.2, 4.2))
+    panels = [
+        (experiment_norm, "Experimental ring/image", "magma"),
+        (simulation_norm, "Simulated ring", "magma"),
+        (residual, "Normalized residual", "coolwarm"),
+    ]
+    for ax, (matrix, title, cmap) in zip(axes, panels):
+        image = ax.imshow(matrix, origin="lower", cmap=cmap, aspect="equal")
+        ax.set_title(title)
+        ax.set_xlabel("pixel x")
+        ax.set_ylabel("pixel y")
+        fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+
+    axes[2].text(
+        0.04,
+        0.94,
+        f"RMSE: {metrics['rmse']:.3f}\nCorr.: {metrics['correlation']:.3f}",
+        transform=axes[2].transAxes,
+        va="top",
+        bbox={"facecolor": "white", "edgecolor": "#f3f4f6", "alpha": 0.88},
+    )
+
+    output_path = _prepare_output(output_path)
+    fig.tight_layout()
+    fig.savefig(output_path)
+    plt.close(fig)
+    return output_path, metrics
