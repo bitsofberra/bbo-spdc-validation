@@ -102,21 +102,9 @@ phase-matching angle, `sinc^2` curve, walk-off plot, theta-tuning plot, and
 standalone ring simulation do not have an experimental accuracy value by
 themselves.
 
-If you later obtain or digitize an experimental ring image, include it in the
-same run:
-
-```bash
-bbo-spdc thesis-run \
-  --out outputs/thesis_run \
-  --ring-matrix path/to/experimental_ring.csv
-```
-
-Supported ring/image inputs are 2D `.csv`, `.txt`, `.npy`, `.png`, `.jpg`,
-`.jpeg`, `.tif`, and `.tiff` files.
-
 ## Experimental and External Data
 
-The repository keeps four data categories separate.
+The repository separates public experimental datasets from proxy/sample data.
 
 ### 1. Public Experimental Data for the Thesis
 
@@ -180,41 +168,7 @@ To generate the simulated far-field ring image separately:
 bbo-spdc simulate-ring --out outputs/ring_demo
 ```
 
-If a public paper or supervisor provides an experimental ring image or matrix
-later, it can be compared with:
-
-```bash
-bbo-spdc compare-ring \
-  --experimental-matrix path/to/experimental_ring.csv \
-  --out outputs/compare_ring
-```
-
-Supported comparison inputs are 2D `.csv`, `.txt`, `.npy`, or common image
-files such as `.png` and `.jpg`.
-
-### 2. Optional Custom Experimental Data
-
-If a supervisor later provides a small experimental table, place it in:
-
-[data/experimental/experimental_counts.csv](/Users/smyybrr/Documents/Codex/2026-05-13/files-mentioned-by-the-user-tez/data/experimental/experimental_counts.csv)
-
-Expected columns:
-
-```csv
-theta_deg,pump_power_mw,integration_time_s,signal_counts,idler_counts,coincidence_counts
-```
-
-Run:
-
-```bash
-bbo-spdc compare --experimental data/experimental/experimental_counts.csv --out outputs/compare
-```
-
-This is the main route for the final thesis comparison between the simulation
-and a BBO angle-scan/counting measurement. It is optional; the thesis can still
-proceed using the public datasets above.
-
-### 3. Proxy/Sample Data
+### 2. Proxy/Sample Data
 
 The `Athleity/SPDC_Project` repository includes useful BBO reference tables and
 sample analysis files, but its `fit_data.csv` is marked in the source script as
@@ -250,24 +204,6 @@ Automated tests:
 ```bash
 pytest
 ```
-
-## Remaining Work
-
-The next scientific gap is not code structure; it is data matching. The current
-phase-matching simulation predicts BBO crystal-angle and wavelength behavior,
-while the strongest public datasets currently included validate polarization
-coincidences and Type-I BBO spatial photon-pair measurements. A clean public
-BBO Type-I angle-scan table would still be the closest possible match to the
-phase-matching simulation, but it has not yet been found as a downloadable raw
-dataset.
-
-See [docs/remaining_work.md](/Users/smyybrr/Documents/Codex/2026-05-13/files-mentioned-by-the-user-tez/docs/remaining_work.md) for a focused checklist.
-
-## VS Code and GitHub
-
-Setup notes are in:
-
-[docs/vscode_github_steps.md](/Users/smyybrr/Documents/Codex/2026-05-13/files-mentioned-by-the-user-tez/docs/vscode_github_steps.md)
 
 ## References and Code Inspiration
 

@@ -1,7 +1,7 @@
 # Optional Experimental Data
 
-This folder is optional. If a supervisor later provides a small experimental
-table, place it in `experimental_counts.csv`.
+This folder is reserved for local experimental count tables that should not be
+included in public validation unless explicitly intended.
 
 Required columns:
 

@@ -478,7 +478,7 @@ def run_thesis_run(args: argparse.Namespace) -> None:
                     "value": f"{brightness:.6f}",
                     "accuracy_percent": "",
                     "output_dir": str(experimental_dir),
-                    "notes": "Optional supervisor-provided angle/count table.",
+                    "notes": "Optional local angle/count table.",
                 }
             )
             summary_rows.extend(
