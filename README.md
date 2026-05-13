@@ -79,6 +79,41 @@ the package currently finds a collinear Type-I BBO phase-matching angle of about
 shows how a small angular detuning changes the non-collinear emission angle and
 reduces the phase-matching strength.
 
+## One Command for Thesis Outputs
+
+Use this command when you want the complete set of thesis figures and
+validation summaries in one folder:
+
+```bash
+bbo-spdc thesis-run --out outputs/thesis_run
+```
+
+This generates the baseline theory/simulation figures, the simulated SPDC ring,
+the public polarization-data comparisons, the Glasgow Type-I BBO spatial-data
+summary, and three summary files:
+
+- `accuracy_summary.md`
+- `accuracy_summary.csv`
+- `accuracy_summary.json`
+
+The `Fit accuracy (%)` column is calculated as `R^2 * 100` when a real
+experimental dataset has a matching fit metric. Theory-only outputs such as the
+phase-matching angle, `sinc^2` curve, walk-off plot, theta-tuning plot, and
+standalone ring simulation do not have an experimental accuracy value by
+themselves.
+
+If you later obtain or digitize an experimental ring image, include it in the
+same run:
+
+```bash
+bbo-spdc thesis-run \
+  --out outputs/thesis_run \
+  --ring-matrix path/to/experimental_ring.csv
+```
+
+Supported ring/image inputs are 2D `.csv`, `.txt`, `.npy`, `.png`, `.jpg`,
+`.jpeg`, `.tif`, and `.tiff` files.
+
 ## Experimental and External Data
 
 The repository keeps four data categories separate.
@@ -206,7 +241,8 @@ Implemented and tested:
 - photon-pair counter model with dark counts and accidentals
 - polarization coincidence model for `Phi+` and unbalanced correlated states
 - CLI commands for reports, demos, power-scan comparisons, polarization comparisons,
-  spatial raw-data summaries, and ring-image simulation/comparison
+  spatial raw-data summaries, ring-image simulation/comparison, and one-command
+  thesis output generation
 - public real-data ingestion for BBO SPDC polarization and Type-I spatial datasets
 
 Automated tests:

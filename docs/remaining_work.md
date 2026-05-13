@@ -52,8 +52,6 @@ If accidental counts are measured, subtract them and propagate their uncertainty
   or digitized from an acceptable source.
 - Add a wavelength-scan comparison if the experimental data is spectral rather
   than angular.
-- Add a small Methods notebook or script that reproduces every thesis figure in
-  one command.
 - Add richer metadata to configuration files: crystal cut angle, detector
   distance, filter bandwidth, detector efficiency, and coincidence window.
 

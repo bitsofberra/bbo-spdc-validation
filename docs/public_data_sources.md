@@ -19,6 +19,25 @@ therefore be built from public, citable BBO SPDC datasets.
 | Karan et al., "Phase matching in BBO crystals for SPDC" | Strong phase-matching reference with experimental/numerical figures; no raw CSV found | Best theory reference for the phase-matching section. |
 | Davenport et al., "Quantum ghost imaging microscopy depth-of-field study" | Very relevant Type-I BBO angle/length study, but Optica says data are not public at this time | Cite as related work; do not use as raw data unless authors provide it. |
 
+## Ring and Walk-Off Figure Leads
+
+| Source | Status | Use in thesis |
+| --- | --- | --- |
+| Defienne et al., "Pixel super-resolution with spatially entangled photons" | Included data archive has text matrices and figure data; the paper uses 405 nm Type-I BBO and 810 +/- 5 nm photon pairs | Use the included Glasgow archive as real spatial/camera evidence. It is not a clean free-space ring scan, because their setup deliberately works near-collinear for imaging. |
+| Guilbert, Wong, and Gauthier, "Observation of elliptical rings in type-I spontaneous parametric downconversion" | Publisher preview shows BBO/BiBO ring camera images and experimental geometry; no raw downloadable matrix found | Good visual/reference source for the ring shape. Use only with proper citation or digitization permission. |
+| Durak, "Optimization of collection optics for maximum fidelity in entangled photon sources" | Open-access BBO/SPDC collection-optics and distinguishability paper; compares numerical simulation with experimental fidelity data | Good citation for why emission angle, collection optics, and walk-off-like spatial distinguishability matter. It is not a raw ring-image dataset. |
+| Takeno et al., "Superresolution concentration measurement realized by sub-shot-noise absorption spectroscopy" | Open-access Type-I BBO paper with a published ring-shaped emission pattern in Fig. 2a | Good visual citation for ring emission from Type-I phase matching. No raw image matrix was found in the article page. |
+
+If a ring image is later digitized from a paper or obtained from a supervisor,
+save it as a 2D CSV/image and run:
+
+```bash
+bbo-spdc thesis-run --out outputs/thesis_run --ring-matrix path/to/ring_image.csv
+```
+
+The output will include normalized RMSE and image-correlation metrics for the
+ring comparison.
+
 ## Not Final Experimental Evidence
 
 `Athleity/SPDC_Project` is useful as code inspiration and software-test data, but
