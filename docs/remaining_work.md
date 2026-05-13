@@ -2,18 +2,26 @@
 
 ## Highest-Priority Scientific Gaps
 
-1. Obtain a phase-matching dataset that matches the simulation.
+1. Decide which public dataset becomes the main experimental comparison.
 
-The current simulation predicts how BBO crystal angle, wavelength, finite crystal
-length, and walk-off affect Type-I SPDC. The most useful final dataset would
-therefore contain:
+There is no in-house experimental setup, so the thesis should state that the
+experimental comparison uses public BBO SPDC datasets. The strongest current
+choices are:
+
+- EPJ Quantum Technology Table 11 for Bell-state coincidence counts.
+- Testing Reality angle-resolved polarizer coincidence data.
+- Glasgow pixel-super-resolution raw figure data for Type-I BBO spatial
+  photon-pair measurements.
+
+The ideal but currently missing public dataset would be a simple Type-I BBO
+phase-matching angle scan with:
 
 ```csv
 theta_deg,pump_power_mw,integration_time_s,signal_counts,idler_counts,coincidence_counts,accidental_counts
 ```
 
-If possible, keep pump power, filter bandwidth, detector position, and
-integration time fixed while scanning the BBO angle.
+If such a dataset is not found, do not invent it. Use the public datasets above
+and clearly state that phase-matching is validated indirectly.
 
 2. Decide the validation metric.
 
@@ -39,7 +47,8 @@ If accidental counts are measured, subtract them and propagate their uncertainty
 ## Code Gaps
 
 - Add optional uncertainty columns to `compare`.
-- Add a theta-scan plotting mode with error bars once real angle-scan data is available.
+- Add a reader/summary command for the Glasgow pixel-super-resolution archive.
+- Add a theta-scan plotting mode with error bars if a public angle-scan table is found.
 - Add a wavelength-scan comparison if the experimental data is spectral rather
   than angular.
 - Add a small Methods notebook or script that reproduces every thesis figure in
@@ -56,5 +65,5 @@ If accidental counts are measured, subtract them and propagate their uncertainty
 - Discussion section: explain why a scale factor is expected in count-rate
   comparisons due to detector efficiency, coupling loss, filter bandwidth, and
   alignment.
-- Limitations section: make clear which datasets are public validation data and
-  which one is the final thesis-specific measurement.
+- Limitations section: make clear that public validation data replace an
+  in-house thesis measurement.

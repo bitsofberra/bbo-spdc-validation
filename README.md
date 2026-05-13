@@ -7,9 +7,10 @@ data.
 
 The project follows the theory structure of the thesis draft, **"Numerical
 Modeling and Validation of Type-1 Spontaneous Parametric Down-Conversion"**.
-The current implementation focuses on the theoretical and numerical core. The
-methods and results sections can be expanded once the final experimental
-dataset is selected or measured.
+The current implementation focuses on the theoretical and numerical core. Since
+an in-house experiment is not available, the validation part of the thesis is
+designed around public experimental datasets from published BBO SPDC
+experiments.
 
 ## Thesis Motivation
 
@@ -77,11 +78,65 @@ reduces the phase-matching strength.
 
 ## Experimental and External Data
 
-The repository keeps three data categories separate.
+The repository keeps four data categories separate.
 
-### 1. Thesis/User Experimental Data
+### 1. Public Experimental Data for the Thesis
 
-Your own final experimental data should go into:
+These are the datasets that can be used as real experimental evidence in the
+thesis. They are not simulated data.
+
+Testing Reality entanglement dataset:
+
+- source: <https://testing-reality.webflow.io/experiment-4>
+- setup: 404 nm laser, two thin BBO crystals, rotatable polarizers, SPAD
+  detectors, 10 ns coincidence window
+- file: `data/external/testing_reality_entanglement/data_allAngles.csv`
+- validates: Bell-state/polarization-angle coincidence behavior
+- result with the current model: balanced `Phi+` fit `R^2 = 0.467`, unbalanced
+  correlated Bell-state fit `R^2 = 0.507`
+
+```bash
+bbo-spdc compare-polarization \
+  --polarization-data data/external/testing_reality_entanglement/data_allAngles.csv \
+  --out outputs/compare_polarization_testing_reality
+```
+
+EPJ Quantum Technology Bell-test dataset:
+
+- source: <https://epjquantumtechnology.springeropen.com/articles/10.1140/epjqt/s40507-024-00298-y>
+- setup: BBO-based undergraduate Bell-test/tomography source
+- file: `data/external/epj_undergraduate_bell/phi_plus_table11.csv`
+- validates: BBO Bell-state coincidence measurements and tomography workflow
+- result with the current model: balanced `Phi+` fit `R^2 = 0.912`, unbalanced
+  correlated Bell-state fit `R^2 = 0.982`
+
+```bash
+bbo-spdc compare-polarization \
+  --polarization-data data/external/epj_undergraduate_bell/phi_plus_table11.csv \
+  --out outputs/compare_polarization_epj
+```
+
+University of Glasgow pixel-super-resolution dataset:
+
+- source: <https://researchdata.gla.ac.uk/1269/>
+- DOI: <https://doi.org/10.5525/gla.researchdata.1269>
+- setup: 405 nm pump, 0.5 mm Type-I BBO, 810 +/- 5 nm photon pairs, EMCCD camera
+- file: `data/external/glasgow_pixel_superresolution/Pixelsuperresolution.zip`
+- validates: real Type-I BBO photon-pair spatial/camera data and figure raw data
+- note: this is a raw-data archive for published figures, not a simple
+  crystal-angle scan CSV
+
+```bash
+bbo-spdc summarize-spatial \
+  --zip-data data/external/glasgow_pixel_superresolution/Pixelsuperresolution.zip \
+  --out outputs/summarize_spatial_glasgow
+```
+
+This writes `spatial_matrix_summary.csv` and `spatial_matrix_examples.png`.
+
+### 2. Optional Custom Experimental Data
+
+If a supervisor later provides a small experimental table, place it in:
 
 [data/experimental/experimental_counts.csv](/Users/smyybrr/Documents/Codex/2026-05-13/files-mentioned-by-the-user-tez/data/experimental/experimental_counts.csv)
 
@@ -98,41 +153,8 @@ bbo-spdc compare --experimental data/experimental/experimental_counts.csv --out 
 ```
 
 This is the main route for the final thesis comparison between the simulation
-and your own BBO angle-scan/counting measurements.
-
-### 2. Real Public BBO SPDC Polarization Data
-
-Two real experimental data sources were added for validating the comparison
-workflow before your own measurements are available.
-
-Testing Reality entanglement dataset:
-
-- source: <https://testing-reality.webflow.io/experiment-4>
-- setup: 404 nm laser, two thin BBO crystals, rotatable polarizers, SPAD
-  detectors, 10 ns coincidence window
-- file: `data/external/testing_reality_entanglement/data_allAngles.csv`
-- result with the current model: balanced `Phi+` fit `R^2 = 0.467`, unbalanced
-  correlated Bell-state fit `R^2 = 0.507`
-
-```bash
-bbo-spdc compare-polarization \
-  --polarization-data data/external/testing_reality_entanglement/data_allAngles.csv \
-  --out outputs/compare_polarization_testing_reality
-```
-
-EPJ Quantum Technology Bell-test dataset:
-
-- source: <https://epjquantumtechnology.springeropen.com/articles/10.1140/epjqt/s40507-024-00298-y>
-- setup: BBO-based undergraduate Bell-test/tomography source
-- file: `data/external/epj_undergraduate_bell/phi_plus_table11.csv`
-- result with the current model: balanced `Phi+` fit `R^2 = 0.912`, unbalanced
-  correlated Bell-state fit `R^2 = 0.982`
-
-```bash
-bbo-spdc compare-polarization \
-  --polarization-data data/external/epj_undergraduate_bell/phi_plus_table11.csv \
-  --out outputs/compare_polarization_epj
-```
+and a BBO angle-scan/counting measurement. It is optional; the thesis can still
+proceed using the public datasets above.
 
 ### 3. Proxy/Sample Data
 
@@ -159,8 +181,9 @@ Implemented and tested:
 - pump walk-off angle and lateral shift
 - photon-pair counter model with dark counts and accidentals
 - polarization coincidence model for `Phi+` and unbalanced correlated states
-- CLI commands for reports, demos, power-scan comparisons, and polarization comparisons
-- public real-data ingestion for BBO SPDC polarization measurements
+- CLI commands for reports, demos, power-scan comparisons, polarization comparisons,
+  and spatial raw-data summaries
+- public real-data ingestion for BBO SPDC polarization and Type-I spatial datasets
 
 Automated tests:
 
@@ -172,11 +195,11 @@ pytest
 
 The next scientific gap is not code structure; it is data matching. The current
 phase-matching simulation predicts BBO crystal-angle and wavelength behavior,
-while the strongest public real datasets found so far are polarization-angle
-coincidence measurements. For the final thesis, the most valuable missing
-dataset would be a BBO Type-I angle scan with columns such as crystal angle,
-pump power, integration time, singles counts, coincidence counts, and optionally
-accidental coincidences.
+while the strongest public datasets currently included validate polarization
+coincidences and Type-I BBO spatial photon-pair measurements. A clean public
+BBO Type-I angle-scan table would still be the closest possible match to the
+phase-matching simulation, but it has not yet been found as a downloadable raw
+dataset.
 
 See [docs/remaining_work.md](/Users/smyybrr/Documents/Codex/2026-05-13/files-mentioned-by-the-user-tez/docs/remaining_work.md) for a focused checklist.
 
@@ -195,4 +218,4 @@ The package was inspired by the structure and physics focus of:
 
 The first repository is mainly a simulation reference. The second contains
 sample/proxy files and some BBO-related tabular outputs. Neither replaces the
-need for a final thesis-specific experimental dataset.
+need for clearly cited public experimental data.

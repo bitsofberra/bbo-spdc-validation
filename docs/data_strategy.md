@@ -1,7 +1,7 @@
 # Data Strategy
 
 This project separates theoretical simulation outputs, real public experimental
-data, proxy/sample data, and future thesis measurements.
+data, optional custom measurements, and proxy/sample data.
 
 ## 1. Theory and Simulation
 
@@ -21,16 +21,24 @@ predictions.
 
 ## 2. Real Public Experimental Data
 
-Two real BBO SPDC polarization datasets are now included:
+Three real BBO SPDC datasets are now included:
 
 - `data/external/testing_reality_entanglement/data_allAngles.csv`
 - `data/external/epj_undergraduate_bell/phi_plus_table11.csv`
+- `data/external/glasgow_pixel_superresolution/Pixelsuperresolution.zip`
 
-They are real BBO SPDC coincidence-count data, but they validate polarization
-correlations rather than the BBO crystal-angle phase-matching curve.
+They are real BBO SPDC experimental data, but they do not all validate the same
+part of the theory:
 
-Use them to develop and demonstrate the comparison workflow, especially the
-connection between entangled-state theory and measured coincidence counts.
+- Testing Reality validates polarization-angle coincidence behavior.
+- EPJ Quantum Technology validates BBO Bell-state coincidence and tomography
+  measurements, and also contains a manuscript figure for BBO alignment/angle
+  optimization.
+- Glasgow pixel-super-resolution validates Type-I BBO spatial photon-pair data
+  from a published EMCCD experiment.
+
+Use these as the thesis experimental basis unless a better public BBO
+phase-matching angle-scan dataset is found.
 
 ## 3. Proxy/Sample Data
 
@@ -38,9 +46,9 @@ connection between entangled-state theory and measured coincidence counts.
 evidence. The source script labels the values as sample data to be replaced by
 actual lab measurements. Keep it as a software-test/proxy dataset only.
 
-## 4. Future Thesis Measurements
+## 4. Optional Custom Measurements
 
-The final thesis-specific dataset should be placed in:
+If a supervisor later provides a small measurement table, place it in:
 
 `data/experimental/experimental_counts.csv`
 
@@ -58,11 +66,15 @@ accidental_counts,coincidence_uncertainty,temperature_c,filter_center_nm,filter_
 
 ## Honest Reporting Language
 
-Recommended wording for the current stage:
+Recommended wording:
 
 - "The theoretical SPDC outputs were generated using a Python package developed
   for this thesis."
-- "The comparison workflow was tested using public BBO SPDC polarization
-  coincidence datasets."
-- "The final validation of the BBO phase-matching simulation requires a
-  thesis-specific crystal-angle or wavelength-scan dataset."
+- "Because no in-house experimental setup was available, validation was carried
+  out using public experimental BBO SPDC datasets."
+- "The public datasets validate polarization coincidence behavior and spatial
+  photon-pair measurements; direct validation of the crystal-angle
+  phase-matching curve is limited by public data availability."
+- "The phase-matching, `sinc^2`, and walk-off figures should therefore be
+  presented as theory-driven simulation outputs, while the public data are used
+  to test the measurement-comparison workflow."

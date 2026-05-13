@@ -21,6 +21,11 @@ from .data_io import (
 )
 from .phase_matching import SPDCConfig, nm_to_wavelength_m, phase_matching_report
 from .polarization import compare_polarization_rows
+from .spatial_data import (
+    read_zip_text_matrices,
+    summarize_matrices,
+    write_spatial_summary_csv,
+)
 
 
 def _add_config_args(parser: argparse.ArgumentParser) -> None:
@@ -158,6 +163,28 @@ def run_compare_polarization(args: argparse.Namespace) -> None:
     print(f"Unbalanced Bell-state R^2: {report['r_squared']:.3f}")
 
 
+def run_summarize_spatial(args: argparse.Namespace) -> None:
+    from .plots import plot_spatial_matrix_examples
+
+    output = Path(args.out)
+    output.mkdir(parents=True, exist_ok=True)
+
+    matrices = read_zip_text_matrices(args.zip_data)
+    if not matrices:
+        print("No text matrices found in the spatial data archive.")
+        return
+
+    summaries = summarize_matrices(matrices)
+    write_spatial_summary_csv(output / "spatial_matrix_summary.csv", summaries)
+    plot_spatial_matrix_examples(
+        matrices,
+        output / "spatial_matrix_examples.png",
+        max_items=args.max_plots,
+    )
+    print(f"Wrote spatial data summary outputs to {output}")
+    print(f"Found {len(matrices)} experimental matrices")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="bbo-spdc",
@@ -210,6 +237,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     polarization_parser.add_argument("--out", default="outputs/compare_polarization")
     polarization_parser.set_defaults(func=run_compare_polarization)
+
+    spatial_parser = subparsers.add_parser(
+        "summarize-spatial",
+        help="Summarize public Type-I BBO spatial raw-data matrices from a zip archive.",
+    )
+    spatial_parser.add_argument(
+        "--zip-data",
+        default="data/external/glasgow_pixel_superresolution/Pixelsuperresolution.zip",
+        help="Zip archive containing comma-separated text matrices.",
+    )
+    spatial_parser.add_argument("--out", default="outputs/summarize_spatial")
+    spatial_parser.add_argument("--max-plots", type=int, default=6)
+    spatial_parser.set_defaults(func=run_summarize_spatial)
 
     return parser
 

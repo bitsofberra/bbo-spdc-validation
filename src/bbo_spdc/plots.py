@@ -328,3 +328,32 @@ def plot_polarization_comparison(predictions: list[dict], output_path: str | Pat
     fig.savefig(output_path)
     plt.close(fig)
     return output_path
+
+
+def plot_spatial_matrix_examples(
+    matrices: list[tuple[str, np.ndarray]], output_path: str | Path, max_items: int = 6
+) -> Path:
+    """Plot example real experimental SPDC image matrices."""
+
+    _set_style()
+    selected = matrices[:max(1, max_items)]
+    columns = min(3, len(selected))
+    rows = int(np.ceil(len(selected) / columns))
+
+    fig, axes = plt.subplots(rows, columns, figsize=(4.1 * columns, 3.6 * rows))
+    axes_array = np.atleast_1d(axes).ravel()
+    for ax, (name, matrix) in zip(axes_array, selected):
+        image = ax.imshow(matrix, cmap="magma", origin="lower", aspect="auto")
+        ax.set_title(Path(name).stem)
+        ax.set_xlabel("pixel x")
+        ax.set_ylabel("pixel y")
+        fig.colorbar(image, ax=ax, fraction=0.046, pad=0.04)
+
+    for ax in axes_array[len(selected) :]:
+        ax.axis("off")
+
+    output_path = _prepare_output(output_path)
+    fig.tight_layout()
+    fig.savefig(output_path)
+    plt.close(fig)
+    return output_path
