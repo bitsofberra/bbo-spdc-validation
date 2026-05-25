@@ -18,7 +18,9 @@ coincidences, and averaged accidental coincidences.
 Use:
 
 ```bash
-bbo-spdc compare-polarization \
-  --polarization-data data/external/epj_undergraduate_bell/phi_plus_table11.csv \
-  --out outputs/compare_polarization_epj
+bbo-spdc validate-polarization --dataset epj --out outputs/polarization_epj
 ```
+
+The validation output uses corrected coincidences, `Ncorr = Nc - Nacc`, with
+Poisson uncertainty approximated by `sqrt(Nc + Nacc)`. It reports R²-based
+agreement and RMSE for balanced and fitted unbalanced Bell-state models.

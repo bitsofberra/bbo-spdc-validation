@@ -23,7 +23,6 @@ from .phase_matching import SPDCConfig, nm_to_wavelength_m, phase_matching_repor
 from .polarization import compare_polarization_rows
 from .ring import read_experimental_matrix, simulate_spdc_ring_image
 from .spatial_data import (
-    read_zip_text_matrices,
     summarize_matrices,
     write_spatial_summary_csv,
 )
@@ -33,6 +32,15 @@ def _add_config_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--pump-wavelength-nm", type=float, default=405.0)
     parser.add_argument("--signal-wavelength-nm", type=float, default=810.0)
     parser.add_argument("--idler-wavelength-nm", type=float, default=810.0)
+    parser.add_argument("--theta-deg", type=float, default=28.95)
+    parser.add_argument("--crystal-length-mm", type=float, default=2.0)
+    parser.add_argument("--pump-waist-um", type=float, default=388.0)
+
+
+def _add_validation_config_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--pump-nm", "--pump-wavelength-nm", dest="pump_wavelength_nm", type=float, default=405.0)
+    parser.add_argument("--signal-nm", "--signal-wavelength-nm", dest="signal_wavelength_nm", type=float, default=810.0)
+    parser.add_argument("--idler-nm", "--idler-wavelength-nm", dest="idler_wavelength_nm", type=float, default=810.0)
     parser.add_argument("--theta-deg", type=float, default=28.95)
     parser.add_argument("--crystal-length-mm", type=float, default=2.0)
     parser.add_argument("--pump-waist-um", type=float, default=388.0)
@@ -162,17 +170,18 @@ def run_compare_polarization(args: argparse.Namespace) -> None:
     write_json(output / "polarization_report.json", {"polarization_fit": report})
     plot_polarization_comparison(predictions, output / "polarization_comparison.png")
     print(f"Wrote polarization comparison outputs to {output}")
-    print(f"Balanced Phi+ R^2: {report['ideal_phi_plus_r_squared']:.3f}")
-    print(f"Unbalanced Bell-state R^2: {report['r_squared']:.3f}")
+    print(f"Balanced Phi+ R²-based agreement: {100 * report['ideal_phi_plus_r_squared']:.2f}%")
+    print(f"Unbalanced Bell-state R²-based agreement: {100 * report['r_squared']:.2f}%")
 
 
 def run_summarize_spatial(args: argparse.Namespace) -> None:
     from .plots import plot_spatial_matrix_examples
+    from .data_loaders import load_glasgow_spatial_matrices
 
     output = Path(args.out)
     output.mkdir(parents=True, exist_ok=True)
 
-    matrices = read_zip_text_matrices(args.zip_data)
+    matrices = load_glasgow_spatial_matrices(args.zip_data)
     if not matrices:
         print("No text matrices found in the spatial data archive.")
         return
@@ -251,317 +260,98 @@ def run_compare_ring(args: argparse.Namespace) -> None:
     print(f"Normalized RMSE: {metrics['rmse']:.3f}")
 
 
-def _fit_accuracy_percent(r_squared) -> float | str:
-    try:
-        value = float(r_squared)
-    except (TypeError, ValueError):
-        return ""
-    if value != value:
-        return ""
-    return max(0.0, min(100.0, 100.0 * value))
-
-
-def _format_accuracy_percent(r_squared) -> str:
-    value = _fit_accuracy_percent(r_squared)
-    if value == "":
-        return ""
-    return f"{value:.2f}"
-
-
-def _prediction_fit_metrics(predictions: list[dict]) -> dict:
-    measured = []
-    simulated = []
-    for row in predictions:
-        measured.append(float(row["measured_coincidence_counts"]))
-        simulated.append(float(row["coincidence_counts"]))
-    if not measured:
-        return {"r_squared": float("nan"), "rmse_counts": float("nan")}
-
-    import numpy as np
-
-    measured_values = np.asarray(measured, dtype=float)
-    simulated_values = np.asarray(simulated, dtype=float)
-    residual = measured_values - simulated_values
-    ss_res = float(np.sum(residual**2))
-    ss_tot = float(np.sum((measured_values - np.mean(measured_values)) ** 2))
-    r_squared = 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
-    return {
-        "r_squared": float(r_squared),
-        "rmse_counts": float(np.sqrt(np.mean(residual**2))),
-    }
-
-
-def _write_accuracy_markdown(path: Path, rows: list[dict]) -> None:
-    lines = [
-        "# Thesis Run Accuracy Summary",
-        "",
-        "The percentage column is calculated from `R^2 * 100` where an `R^2` fit metric is available. "
-        "Simulation-only figures do not have an experimental accuracy value.",
-        "",
-        "| Section | Dataset | Metric | Value | Fit accuracy (%) | Output |",
-        "| --- | --- | --- | --- | --- | --- |",
-    ]
-    for row in rows:
-        lines.append(
-            "| {section} | {dataset} | {metric} | {value} | {accuracy_percent} | {output_dir} |".format(
-                **row
-            )
-        )
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-
-
-def _run_public_polarization_dataset(
-    dataset_name: str, data_path: str | Path, output: Path
-) -> list[dict]:
-    from .plots import plot_polarization_comparison
-
-    rows = read_polarization_csv(data_path)
-    predictions, report = compare_polarization_rows(rows)
-    output.mkdir(parents=True, exist_ok=True)
-    write_csv(output / "polarization_predictions.csv", predictions)
-    write_json(output / "polarization_report.json", {"polarization_fit": report})
-    plot_polarization_comparison(predictions, output / "polarization_comparison.png")
-    return [
-        {
-            "section": "polarization",
-            "dataset": dataset_name,
-            "metric": "balanced_phi_plus_r_squared",
-            "value": f"{report['ideal_phi_plus_r_squared']:.6f}",
-            "accuracy_percent": _format_accuracy_percent(report["ideal_phi_plus_r_squared"]),
-            "output_dir": str(output),
-            "notes": "Balanced ideal Phi+ model fit.",
-        },
-        {
-            "section": "polarization",
-            "dataset": dataset_name,
-            "metric": "unbalanced_bell_state_r_squared",
-            "value": f"{report['r_squared']:.6f}",
-            "accuracy_percent": _format_accuracy_percent(report["r_squared"]),
-            "output_dir": str(output),
-            "notes": "Best current accuracy value for this dataset.",
-        },
-        {
-            "section": "polarization",
-            "dataset": dataset_name,
-            "metric": "rmse_counts",
-            "value": f"{report['rmse_counts']:.6f}",
-            "accuracy_percent": "",
-            "output_dir": str(output),
-            "notes": "Absolute residual scale in coincidence counts.",
-        },
-    ]
-
-
 def run_thesis_run(args: argparse.Namespace) -> None:
-    from .plots import (
-        plot_counter_demo,
-        plot_experiment_comparison,
-        plot_power_scan_comparison,
-        plot_ring_comparison,
-        plot_ring_simulation,
-        plot_sinc2_phase_matching,
-        plot_spatial_matrix_examples,
-        plot_theta_tuning_shift,
-        plot_walkoff_effect,
-    )
+    from .thesis_outputs import run_clean_thesis_outputs
 
-    config = _config_from_args(args)
+    run_clean_thesis_outputs(
+        config=_config_from_args(args),
+        output=args.out,
+        epj_data=args.epj_data,
+        testing_reality_data=args.testing_reality_data,
+        karan_data=args.karan_data,
+        byu_data=args.byu_data,
+        glasgow_zip=args.glasgow_zip,
+        josa_data=args.josa_data,
+        fit_offset=args.fit_offset,
+    )
+    print(f"Wrote clean thesis outputs to {args.out}")
+    print(f"Validation summary: {Path(args.out) / 'validation_summary.md'}")
+
+
+def run_validate_theta(args: argparse.Namespace) -> None:
+    from .data_loaders import load_byu_digitized, load_karan_theta_digitized
+    from .theta_validation import plot_byu_ring_diameter_validation, plot_theta_ring_validation
+
     output = Path(args.out)
     output.mkdir(parents=True, exist_ok=True)
-    summary_rows: list[dict] = []
-
-    simulation_dir = output / "simulation"
-    simulation_dir.mkdir(parents=True, exist_ok=True)
-    report = phase_matching_report(config)
-    write_json(simulation_dir / "phase_matching_report.json", report)
-    write_phase_matching_summary(simulation_dir / "phase_matching_summary.txt", report)
-    plot_sinc2_phase_matching(config, simulation_dir / "sinc2_phase_matching.png")
-    plot_walkoff_effect(config, simulation_dir / "walkoff_effect.png")
-    plot_theta_tuning_shift(config, simulation_dir / "theta_tuning_shift.png")
-    plot_counter_demo(config, simulation_dir / "entangled_counter_demo.png")
-    ring = _ring_from_args(args)
-    plot_ring_simulation(ring, simulation_dir / "spdc_ring_simulation.png")
-    write_json(
-        simulation_dir / "spdc_ring_report.json",
-        {
-            "external_angle_deg": ring.external_angle_deg,
-            "ring_radius_mm": ring.radius_mm,
-            "ring_width_mm": ring.width_mm,
-            "walkoff_shift_mm": ring.walkoff_shift_mm,
-        },
+    report = plot_theta_ring_validation(
+        _config_from_args(args),
+        load_karan_theta_digitized(args.karan_data),
+        output / "theta_ring_validation.png",
+        theta_min=args.theta_min,
+        theta_max=args.theta_max,
     )
-    summary_rows.extend(
-        [
-            {
-                "section": "simulation",
-                "dataset": "theory",
-                "metric": "theta_collinear_deg",
-                "value": f"{report['phase_matching']['theta_collinear_deg']:.6f}",
-                "accuracy_percent": "",
-                "output_dir": str(simulation_dir),
-                "notes": "Theory-only output.",
-            },
-            {
-                "section": "simulation",
-                "dataset": "theory",
-                "metric": "sinc2_current",
-                "value": f"{report['phase_matching']['sinc2_current']:.6f}",
-                "accuracy_percent": "",
-                "output_dir": str(simulation_dir),
-                "notes": "Phase-matching strength at configured theta; not an experimental accuracy.",
-            },
-            {
-                "section": "simulation",
-                "dataset": "theory",
-                "metric": "ring_radius_mm",
-                "value": f"{ring.radius_mm:.6f}",
-                "accuracy_percent": "",
-                "output_dir": str(simulation_dir),
-                "notes": "Simulated ring radius at the configured detector distance.",
-            },
-        ]
+    byu_report = plot_byu_ring_diameter_validation(
+        load_byu_digitized(args.byu_data),
+        output / "byu_ring_diameter_validation.png",
+        fit_offset_enabled=args.fit_offset,
+    )
+    write_json(output / "theta_validation_report.json", {"karan": report, "byu": byu_report})
+    print(f"Wrote theta validation outputs to {output}")
+
+
+def run_validate_polarization(args: argparse.Namespace) -> None:
+    from .data_loaders import load_epj_phi_plus_table11, load_testing_reality_all_angles
+    from .polarization_validation import (
+        EPJ_SOURCE_URL,
+        TESTING_REALITY_SOURCE_URL,
+        fit_polarization_model,
+        plot_polarization_validation,
+        write_polarization_predictions,
     )
 
-    public_sets = [
-        ("Testing Reality", Path(args.testing_reality_data), output / "testing_reality_polarization"),
-        ("EPJ Quantum Technology", Path(args.epj_data), output / "epj_polarization"),
-    ]
-    for dataset_name, data_path, dataset_output in public_sets:
-        if data_path.exists():
-            summary_rows.extend(
-                _run_public_polarization_dataset(dataset_name, data_path, dataset_output)
-            )
+    output = Path(args.out)
+    output.mkdir(parents=True, exist_ok=True)
+    if args.dataset == "epj":
+        rows = load_epj_phi_plus_table11(args.epj_data)
+        label = "EPJ Table 11 Phi+"
+        source_url = EPJ_SOURCE_URL
+        filename = "polarization_validation_epj_phi_plus"
+        note = ""
+    else:
+        rows = load_testing_reality_all_angles(args.testing_reality_data)
+        label = "Testing Reality"
+        source_url = TESTING_REALITY_SOURCE_URL
+        filename = "polarization_validation_testing_reality"
+        note = "Non-ideal open dataset: experimental imbalance is retained in the measurement."
+    predictions, report = fit_polarization_model(rows, label)
+    plot_polarization_validation(
+        predictions, report, output / f"{filename}.png", label, source_url, note
+    )
+    write_polarization_predictions(output / f"{filename}.csv", predictions)
+    write_json(output / f"{filename}_report.json", report)
+    print(f"Wrote polarization validation outputs to {output}")
 
-    glasgow_path = Path(args.glasgow_zip)
-    if glasgow_path.exists():
-        spatial_dir = output / "glasgow_spatial"
-        matrices = read_zip_text_matrices(glasgow_path)
-        summaries = summarize_matrices(matrices)
-        write_spatial_summary_csv(spatial_dir / "spatial_matrix_summary.csv", summaries)
-        plot_spatial_matrix_examples(
-            matrices,
-            spatial_dir / "spatial_matrix_examples.png",
-            max_items=args.max_spatial_plots,
-        )
-        summary_rows.append(
-            {
-                "section": "spatial",
-                "dataset": "University of Glasgow",
-                "metric": "matrix_count",
-                "value": str(len(matrices)),
-                "accuracy_percent": "",
-                "output_dir": str(spatial_dir),
-                "notes": "Real Type-I BBO spatial raw-data archive; accuracy requires a matching image model.",
-            }
-        )
 
-    experimental_path = Path(args.experimental)
-    if experimental_path.exists():
-        rows = read_experimental_csv(experimental_path)
-        if rows:
-            experimental_dir = output / "custom_experimental"
-            initial_settings = CounterSettings()
-            brightness = fit_brightness_from_experiment(rows, config, initial_settings)
-            settings = initial_settings.with_brightness(brightness)
-            predictions = predictions_for_rows(rows, config, settings)
-            write_csv(experimental_dir / "comparison_predictions.csv", predictions)
-            plot_experiment_comparison(
-                predictions,
-                experimental_dir / "experiment_vs_simulation.png",
-            )
-            metrics = _prediction_fit_metrics(predictions)
-            summary_rows.append(
-                {
-                    "section": "custom_experimental",
-                    "dataset": str(experimental_path),
-                    "metric": "fitted_brightness_pairs_per_mw_s",
-                    "value": f"{brightness:.6f}",
-                    "accuracy_percent": "",
-                    "output_dir": str(experimental_dir),
-                    "notes": "Optional local angle/count table.",
-                }
-            )
-            summary_rows.extend(
-                [
-                    {
-                        "section": "custom_experimental",
-                        "dataset": str(experimental_path),
-                        "metric": "coincidence_r_squared",
-                        "value": f"{metrics['r_squared']:.6f}",
-                        "accuracy_percent": _format_accuracy_percent(metrics["r_squared"]),
-                        "output_dir": str(experimental_dir),
-                        "notes": "Agreement between measured and simulated coincidence counts.",
-                    },
-                    {
-                        "section": "custom_experimental",
-                        "dataset": str(experimental_path),
-                        "metric": "rmse_counts",
-                        "value": f"{metrics['rmse_counts']:.6f}",
-                        "accuracy_percent": "",
-                        "output_dir": str(experimental_dir),
-                        "notes": "Absolute residual scale in coincidence counts.",
-                    },
-                ]
-            )
+def run_validate_spatial(args: argparse.Namespace) -> None:
+    from .data_loaders import load_glasgow_spatial_matrices, load_josa_b_eccentricity
+    from .spatial_validation import plot_spatial_ring_validation
 
-    if args.ring_matrix:
-        ring_dir = output / "ring_comparison"
-        experiment = read_experimental_matrix(args.ring_matrix)
-        args.pixels = int(experiment.shape[0])
-        ring_for_shape = _ring_from_args(args)
-        _, metrics = plot_ring_comparison(
-            experiment,
-            ring_for_shape,
-            ring_dir / "ring_experiment_vs_simulation.png",
-        )
-        write_json(ring_dir / "ring_comparison_report.json", metrics)
-        summary_rows.append(
-            {
-                "section": "ring",
-                "dataset": str(args.ring_matrix),
-                "metric": "normalized_rmse",
-                "value": f"{metrics['rmse']:.6f}",
-                "accuracy_percent": "",
-                "output_dir": str(ring_dir),
-                "notes": "Lower RMSE means closer normalized ring image match.",
-            }
-        )
-        summary_rows.append(
-            {
-                "section": "ring",
-                "dataset": str(args.ring_matrix),
-                "metric": "image_correlation",
-                "value": f"{metrics['correlation']:.6f}",
-                "accuracy_percent": _format_accuracy_percent(metrics["correlation"]),
-                "output_dir": str(ring_dir),
-                "notes": "Correlation between normalized experimental and simulated images.",
-            }
-        )
-
-    if args.include_proxy and Path(args.power_scan).exists():
-        power_dir = output / "proxy_power_scan"
-        rows = read_power_scan_csv(args.power_scan)
-        predictions, calibration = predictions_for_power_scan(rows, config, CounterSettings())
-        write_csv(power_dir / "power_scan_predictions.csv", predictions)
-        plot_power_scan_comparison(predictions, power_dir / "power_scan_comparison.png")
-        write_json(power_dir / "power_scan_report.json", {"power_scan_calibration": calibration})
-        summary_rows.append(
-            {
-                "section": "proxy",
-                "dataset": str(args.power_scan),
-                "metric": "power_exponent",
-                "value": f"{calibration['power_exponent']:.6f}",
-                "accuracy_percent": "",
-                "output_dir": str(power_dir),
-                "notes": "Proxy/sample data only; do not use as final experimental evidence.",
-            }
-        )
-
-    write_csv(output / "accuracy_summary.csv", summary_rows)
-    write_json(output / "accuracy_summary.json", {"summary": summary_rows})
-    _write_accuracy_markdown(output / "accuracy_summary.md", summary_rows)
-    print(f"Wrote thesis run outputs to {output}")
-    print(f"Accuracy summary: {output / 'accuracy_summary.md'}")
+    output = Path(args.out)
+    output.mkdir(parents=True, exist_ok=True)
+    try:
+        matrices = load_glasgow_spatial_matrices(args.glasgow_zip)
+    except FileNotFoundError:
+        matrices = []
+    report = plot_spatial_ring_validation(
+        _config_from_args(args),
+        matrices,
+        output / "spatial_ring_validation.png",
+        output / "spatial_eccentricity_summary.csv",
+        load_josa_b_eccentricity(args.josa_data),
+    )
+    write_json(output / "spatial_validation_report.json", report)
+    print(f"Wrote spatial validation outputs to {output}")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -662,7 +452,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     thesis_parser = subparsers.add_parser(
         "thesis-run",
-        help="Generate all thesis outputs and a single accuracy summary.",
+        help="Generate the cleaned thesis figure set and validation summary.",
     )
     _add_config_args(thesis_parser)
     thesis_parser.add_argument("--out", default="outputs/thesis_run")
@@ -679,22 +469,72 @@ def build_parser() -> argparse.ArgumentParser:
         default="data/external/glasgow_pixel_superresolution/Pixelsuperresolution.zip",
     )
     thesis_parser.add_argument(
-        "--experimental",
-        default="data/experimental/experimental_counts.csv",
+        "--karan-data",
+        default="data/external/karan_bbo_phase_matching/type1_theta_emccd_digitized.csv",
     )
-    thesis_parser.add_argument("--ring-matrix", default="")
-    thesis_parser.add_argument("--detector-distance-mm", type=float, default=100.0)
-    thesis_parser.add_argument("--field-of-view-mm", type=float, default=14.0)
-    thesis_parser.add_argument("--pixels", type=int, default=420)
-    thesis_parser.add_argument("--ring-width-mm", type=float, default=0.22)
-    thesis_parser.add_argument("--azimuthal-modulation", type=float, default=0.08)
-    thesis_parser.add_argument("--max-spatial-plots", type=int, default=6)
-    thesis_parser.add_argument("--include-proxy", action="store_true")
     thesis_parser.add_argument(
-        "--power-scan",
-        default="data/external/athleity_spdc_project/fit_data.csv",
+        "--byu-data",
+        default="data/external/byu_noncollinear_spdc/byu_fig3_3_digitized.csv",
     )
+    thesis_parser.add_argument(
+        "--josa-data",
+        default="data/external/josa_b_elliptical_rings/bbo_eccentricity_table1.csv",
+    )
+    thesis_parser.add_argument("--fit-offset", action="store_true")
     thesis_parser.set_defaults(func=run_thesis_run)
+
+    theta_parser = subparsers.add_parser(
+        "validate-theta",
+        help="Validate theta/ring tuning with literature data when digitized values exist.",
+    )
+    _add_validation_config_args(theta_parser)
+    theta_parser.add_argument("--out", default="outputs/theta_validation")
+    theta_parser.add_argument(
+        "--karan-data",
+        default="data/external/karan_bbo_phase_matching/type1_theta_emccd_digitized.csv",
+    )
+    theta_parser.add_argument(
+        "--byu-data",
+        default="data/external/byu_noncollinear_spdc/byu_fig3_3_digitized.csv",
+    )
+    theta_parser.add_argument("--theta-min", type=float, default=28.4)
+    theta_parser.add_argument("--theta-max", type=float, default=29.4)
+    theta_parser.add_argument("--fit-offset", action="store_true")
+    theta_parser.set_defaults(func=run_validate_theta)
+
+    validation_polarization_parser = subparsers.add_parser(
+        "validate-polarization",
+        help="Fit Bell-state polarization models to a selected experimental dataset.",
+    )
+    validation_polarization_parser.add_argument(
+        "--dataset", choices=["epj", "testing_reality"], required=True
+    )
+    validation_polarization_parser.add_argument("--out", default="outputs/polarization_validation")
+    validation_polarization_parser.add_argument(
+        "--epj-data",
+        default="data/external/epj_undergraduate_bell/phi_plus_table11.csv",
+    )
+    validation_polarization_parser.add_argument(
+        "--testing-reality-data",
+        default="data/external/testing_reality_entanglement/data_allAngles.csv",
+    )
+    validation_polarization_parser.set_defaults(func=run_validate_polarization)
+
+    validation_spatial_parser = subparsers.add_parser(
+        "validate-spatial",
+        help="Generate a qualitative Glasgow spatial/modeled ring comparison.",
+    )
+    _add_validation_config_args(validation_spatial_parser)
+    validation_spatial_parser.add_argument("--out", default="outputs/spatial_validation")
+    validation_spatial_parser.add_argument(
+        "--glasgow-zip",
+        default="data/external/glasgow_pixel_superresolution/Pixelsuperresolution.zip",
+    )
+    validation_spatial_parser.add_argument(
+        "--josa-data",
+        default="data/external/josa_b_elliptical_rings/bbo_eccentricity_table1.csv",
+    )
+    validation_spatial_parser.set_defaults(func=run_validate_spatial)
 
     return parser
 

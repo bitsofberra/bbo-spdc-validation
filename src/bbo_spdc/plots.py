@@ -51,7 +51,9 @@ def _set_style():
     )
 
 
-def plot_sinc2_phase_matching(config: SPDCConfig, output_path: str | Path) -> Path:
+def plot_sinc2_phase_matching(
+    config: SPDCConfig, output_path: str | Path, theory_only: bool = False
+) -> Path:
     _set_style()
     signal_nm, idler_nm, sinc2 = sinc2_spectrum(config)
     peak_index = int(np.argmax(sinc2))
@@ -59,7 +61,7 @@ def plot_sinc2_phase_matching(config: SPDCConfig, output_path: str | Path) -> Pa
     mismatch = np.linspace(-4.0 * np.pi, 4.0 * np.pi, 900)
     universal = np.sinc(mismatch / np.pi) ** 2
 
-    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(10.8, 4.4))
+    fig, (ax0, ax1) = plt.subplots(1, 2, figsize=(10.8, 4.7))
     ax0.plot(mismatch, universal, color="#2563eb", linewidth=2.2)
     ax0.axvline(0.0, color="#111827", linestyle="--", linewidth=1.1)
     ax0.set_xlabel("Delta k L / 2")
@@ -92,15 +94,19 @@ def plot_sinc2_phase_matching(config: SPDCConfig, output_path: str | Path) -> Pa
         color="#7c2d12",
         bbox={"facecolor": "white", "edgecolor": "#f3f4f6", "alpha": 0.85},
     )
+    if theory_only:
+        fig.suptitle("Theory-only: finite-crystal phase-matching sinc2 model")
 
     output_path = _prepare_output(output_path)
-    fig.tight_layout()
+    fig.tight_layout(rect=[0.0, 0.0, 1.0, 0.94] if theory_only else None)
     fig.savefig(output_path)
     plt.close(fig)
     return output_path
 
 
-def plot_walkoff_effect(config: SPDCConfig, output_path: str | Path) -> Path:
+def plot_walkoff_effect(
+    config: SPDCConfig, output_path: str | Path, theory_only: bool = False
+) -> Path:
     _set_style()
     theta_deg = np.linspace(0.1, 60.0, 500)
     theta_rad = np.deg2rad(theta_deg)
@@ -123,12 +129,18 @@ def plot_walkoff_effect(config: SPDCConfig, output_path: str | Path) -> Path:
     ax2b.set_ylabel("Relative overlap")
     ax2.axvline(config.theta_deg, color="#6d28d9", linestyle="--", linewidth=1.2)
     ax2.set_title("Walk-off reduces collection overlap")
+    if theory_only:
+        fig.suptitle("Theory-only supplementary figure: spatial walk-off model")
 
-    lines = ax2.get_lines() + ax2b.get_lines()
+    lines = [
+        line
+        for line in ax2.get_lines() + ax2b.get_lines()
+        if not line.get_label().startswith("_")
+    ]
     ax2.legend(lines, [line.get_label() for line in lines], loc="best")
 
     output_path = _prepare_output(output_path)
-    fig.tight_layout()
+    fig.tight_layout(rect=[0.0, 0.0, 1.0, 0.94] if theory_only else None)
     fig.savefig(output_path)
     plt.close(fig)
     return output_path

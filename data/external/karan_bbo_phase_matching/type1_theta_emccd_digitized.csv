@@ -1,0 +1,4 @@
+source,figure,theta_p_deg,experimental_ring_radius_mm_or_px,experimental_ring_radius_uncertainty,model_ring_radius_mm_or_px,notes,digitized
+Karan_et_al_2020_J_Opt,Type-I_EMCCD_images,28.64,,,,"Theta value reported with an experimental EMCCD image; radius not digitized.",false
+Karan_et_al_2020_J_Opt,Type-I_EMCCD_images,28.74,,,,"Theta value reported with an experimental EMCCD image; radius not digitized.",false
+Karan_et_al_2020_J_Opt,Type-I_EMCCD_images,28.95,,,,"Theta value reported with an experimental EMCCD image; radius not digitized.",false

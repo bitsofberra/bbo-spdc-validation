@@ -12,9 +12,9 @@ al. The paper describes a 405 nm diode laser pumping a 0.5 mm Type-I BBO crystal
 and selecting near-degenerate photon pairs at 810 +/- 5 nm.
 
 The downloaded archive `Pixelsuperresolution.zip` contains Excel workbooks and
-text matrices for the raw data behind the published figures. It is useful for
-validating the project against real Type-I BBO photon-pair spatial/camera data.
+text matrices for the raw data behind the published figures. It provides real
+Type-I BBO photon-pair spatial/camera data.
 
-This dataset is not a direct BBO crystal-angle phase-matching scan. Use it as
-public experimental evidence for Type-I BBO SPDC photon-pair measurements and
-describe the phase-matching simulation as an associated theory-driven model.
+This dataset is not a direct BBO crystal-angle scan or a calibrated free-space
+ring image. `bbo-spdc validate-spatial` therefore uses it in a clearly labeled
+qualitative spatial comparison and does not report direct radius error or RMSE.

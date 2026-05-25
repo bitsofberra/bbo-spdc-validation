@@ -25,7 +25,9 @@ The first line of the CSV states that each acquisition lasted 1 second with a
 Use:
 
 ```bash
-bbo-spdc compare-polarization \
-  --polarization-data data/external/testing_reality_entanglement/data_allAngles.csv \
-  --out outputs/compare_polarization_testing_reality
+bbo-spdc validate-polarization --dataset testing_reality --out outputs/polarization_testing
 ```
+
+This is retained as a non-ideal experimental validation dataset because the
+recorded coincidence map is imbalanced. The validation output reports
+R²-based agreement and RMSE without treating it as an ideal source.
