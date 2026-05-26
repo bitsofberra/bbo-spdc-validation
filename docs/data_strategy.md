@@ -46,12 +46,17 @@ phase-matching angle-scan dataset is found.
 ## 3. Literature Templates
 
 - `data/external/karan_bbo_phase_matching/type1_theta_emccd_digitized.csv`
-  contains published theta locations, while ring-radius fields remain blank.
+  contains digitized annular radial-peak radii from Karan et al. Figure 8 for
+  `theta_p = 28.74 deg` and `28.95 deg`. Values are in `figure_px`, because
+  the published image has no physical spatial scale. The `28.64 deg` central
+  blob is retained without an assigned annular radius.
 - `data/external/byu_noncollinear_spdc/byu_fig3_3_digitized.csv` is an empty
   supplementary template for values entered by a documented digitization.
 
-Numerical validation metrics are generated only after measurement values are
-present. Karan theta markers alone do not support an RMSE or an R² statement.
+For Karan, RMSE and MAE compare the digitized experimental panels to the
+corresponding numerical panels shown in the paper, in figure pixels. R² is not
+reported from only two annular-radius points, and these pixel measurements are
+not directly fitted to the package model's millimetre-scale curve.
 
 ## 4. Proxy/Sample Data
 
@@ -67,9 +72,9 @@ Recommended wording:
   for this thesis."
 - "Because no in-house experimental setup was available, validation was carried
   out using public experimental BBO SPDC datasets."
-- "The public datasets validate polarization coincidence behavior and spatial
-  photon-pair measurements; direct validation of the crystal-angle
-  phase-matching curve is limited by public data availability."
+- "Digitized Karan et al. Figure 8 data support a limited, paper-internal
+  theta/ring comparison in figure pixels; a calibrated crystal-angle scan in
+  physical units remains unavailable."
 - "The phase-matching, `sinc^2`, and walk-off figures should therefore be
   presented as theory-driven simulation outputs, while the public data are used
   to test the measurement-comparison workflow."

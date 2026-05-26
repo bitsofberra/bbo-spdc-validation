@@ -71,7 +71,7 @@ The command creates these main figures:
 | Figure | Theory topic | Dataset | Metric | Status |
 | --- | --- | --- | --- | --- |
 | `model_sinc2_phase_matching.png` | Phase mismatch and finite-crystal `sinc^2` envelope | None; numerical model | No experimental metric | Main |
-| `theta_ring_validation.png` | Type-I phase matching and theta/ring tuning | Karan et al. theta markers; digitized radius template | RMSE/MAE only when radii are entered | Main |
+| `theta_ring_validation.png` | Type-I phase matching and theta/ring tuning | Karan et al. Figure 8 digitized literature data | RMSE/MAE in figure pixels; no R² for two annular points | Main |
 | `polarization_validation_epj_phi_plus.png` | Polarization entanglement | EPJ Quantum Technology Table 11 | R²-based agreement; RMSE | Main |
 | `polarization_validation_testing_reality.png` | Polarization coincidence behavior | Testing Reality public CSV | R²-based agreement; RMSE | Main |
 | `spatial_ring_validation.png` | Spatial/ring geometry | Glasgow spatial matrices; JOSA B eccentricity context | Qualitative comparison | Main |
@@ -87,9 +87,10 @@ It also creates:
 
 `R²-based agreement (%)` replaces the earlier fit-percentage wording and is
 used only for real experimental polarization fits. Theory-only figures have no
-experimental agreement value. The theta figure does not report an agreement
-metric until traceable ring-radius values are added to the digitized literature
-template.
+experimental agreement value. The theta figure reports a traceable,
+paper-internal comparison of digitized Karan experimental and numerical panels
+in `figure_px`; it is not a calibrated fit of those pixels to the package model
+curve in millimetres.
 
 ## Experimental and External Data
 
@@ -118,7 +119,7 @@ bbo-spdc validate-theta --out outputs/theta_validation
 
 | Source | Template | Current status |
 | --- | --- | --- |
-| Karan et al. Type-I BBO EMCCD images | `data/external/karan_bbo_phase_matching/type1_theta_emccd_digitized.csv` | Known theta values entered; radius values blank |
+| Karan et al. Type-I BBO EMCCD images | `data/external/karan_bbo_phase_matching/type1_theta_emccd_digitized.csv` | Figure 8 annular radii digitized in `figure_px`; 28.64 deg central blob retained without an annular radius |
 | BYU non-collinear SPDC thesis | `data/external/byu_noncollinear_spdc/byu_fig3_3_digitized.csv` | Empty template; supplementary only because wavelengths differ |
 
 No numerical literature values are entered unless they are traceably reported
@@ -131,7 +132,7 @@ Implemented and tested:
 - BBO Sellmeier equations and effective extraordinary index
 - Type-I collinear phase-matching angle search
 - symmetric non-collinear emission-angle estimate
-- theta/ring curve with Karan literature theta markers and digitized-data loader
+- theta/ring curve with Karan Figure 8 digitized annular-radius comparison in figure pixels
 - `sinc^2` finite-crystal phase-matching envelope
 - supplementary pump walk-off model
 - corrected-coincidence polarization fits for balanced `Phi+` and unbalanced correlated states

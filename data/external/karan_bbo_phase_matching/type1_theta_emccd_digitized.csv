@@ -1,4 +1,4 @@
-source,figure,theta_p_deg,experimental_ring_radius_mm_or_px,experimental_ring_radius_uncertainty,model_ring_radius_mm_or_px,notes,digitized
-Karan_et_al_2020_J_Opt,Type-I_EMCCD_images,28.64,,,,"Theta value reported with an experimental EMCCD image; radius not digitized.",false
-Karan_et_al_2020_J_Opt,Type-I_EMCCD_images,28.74,,,,"Theta value reported with an experimental EMCCD image; radius not digitized.",false
-Karan_et_al_2020_J_Opt,Type-I_EMCCD_images,28.95,,,,"Theta value reported with an experimental EMCCD image; radius not digitized.",false
+source,figure,theta_p_deg,experimental_ring_radius_mm_or_px,experimental_ring_radius_uncertainty,model_ring_radius_mm_or_px,radius_unit,digitization_method,notes,digitized
+Karan_et_al_2020_J_Opt,Figure_8_a_d,28.64,,,,,"Native ar5iv Figure 8 PNG; annular radial-peak method.","Experimental and numerical panels are central blobs; no annular peak radius is assigned.",false
+Karan_et_al_2020_J_Opt,Figure_8_b_e,28.74,20.3,1.0,21.3,figure_px,"Native ar5iv Figure 8 PNG; label-masked radial-average intensity peak.","Digitized literature data: experimental panel (b) compared with corresponding numerical panel (e).",true
+Karan_et_al_2020_J_Opt,Figure_8_c_f,28.95,38.3,1.0,39.3,figure_px,"Native ar5iv Figure 8 PNG; label-masked radial-average intensity peak.","Digitized literature data: experimental panel (c) compared with corresponding numerical panel (f).",true

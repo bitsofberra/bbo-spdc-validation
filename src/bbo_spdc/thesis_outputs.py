@@ -88,6 +88,25 @@ def _fmt(value, digits: int = 4) -> str:
 
 
 def _write_summary_markdown(path: Path, rows: list[dict], reports: dict) -> None:
+    theta_report = reports["theta"]
+    if theta_report["points"]:
+        theta_note = (
+            "Karan et al. Figure 8 annular radii were digitized in figure-pixel units "
+            f"from the experimental and corresponding numerical panels. For the "
+            f"{theta_report['points']} annular points, paper-internal comparison gives "
+            f"`RMSE = {theta_report['rmse']:.1f} {theta_report['unit']}` and "
+            f"`MAE = {theta_report['mae']:.1f} {theta_report['unit']}`. "
+            "R² is not reported because only two annular radius points are available. "
+            "Because the published image provides no physical spatial scale, these "
+            "pixel radii are not fitted directly to the package model curve in millimetres."
+        )
+    else:
+        theta_note = (
+            "Karan et al. report Type-I BBO experimental EMCCD images at "
+            "`theta_p = 28.64 deg`, `28.74 deg`, and `28.95 deg`, alongside numerical images. "
+            "The repository stores these literature theta markers; no ring-radius metric is "
+            "calculated until traceable digitized radii are entered."
+        )
     lines = [
         "# Validation Summary",
         "",
@@ -108,12 +127,7 @@ def _write_summary_markdown(path: Path, rows: list[dict], reports: dict) -> None
             "## Theta Validation Note",
             "",
             reports["theta"].get("warning", ""),
-            (
-                "Karan et al. report Type-I BBO experimental EMCCD images at "
-                "`theta_p = 28.64 deg`, `28.74 deg`, and `28.95 deg`, alongside numerical images. "
-                "The repository stores these literature theta markers; no ring-radius metric is "
-                "calculated until traceable digitized radii are entered."
-            ),
+            theta_note,
             "",
             "## Spatial Validation Note",
             "",
@@ -138,6 +152,24 @@ def _write_summary_markdown(path: Path, rows: list[dict], reports: dict) -> None
 
 
 def _write_figure_captions(path: Path, theta_report: dict, spatial_report: dict) -> None:
+    if theta_report["points"]:
+        theta_caption = (
+            "The left panel shows the package Sellmeier model in detector-plane "
+            "millimetres. The right panel shows digitized literature data from Karan "
+            "et al. Figure 8: experimental annular radial-peak radii and the "
+            "corresponding numerical-panel radii in figure pixels. For two annular "
+            f"points, RMSE is `{theta_report['rmse']:.1f} {theta_report['unit']}` and "
+            f"MAE is `{theta_report['mae']:.1f} {theta_report['unit']}`; R² is not "
+            "reported. The pixel data are not directly fitted to the millimetre-scale "
+            "package curve because the published figure has no physical image scale."
+        )
+    else:
+        theta_caption = (
+            "Markers identify theta values for experimental EMCCD images reported by "
+            "Karan et al. Radius values have not been digitized, so this figure "
+            "provides literature-linked visual context rather than a numerical "
+            "ring-radius fit."
+        )
     captions = f"""# Figure Captions
 
 ## Figure 1: `model_sinc2_phase_matching.png`
@@ -153,9 +185,7 @@ for the 405 nm to 810 nm + 810 nm configuration. The vertical line gives the
 calculated collinear phase-matching angle (`theta_PM = {theta_report['theta_pm_deg']:.3f} deg`).
 The dotted reference line marks the approximately `29.0 deg` literature value
 reported for this wavelength regime.
-Markers identify theta values for experimental EMCCD images reported by Karan
-et al. Radius values have not been digitized, so this figure currently provides
-literature-linked visual context rather than a numerical ring-radius fit.
+{theta_caption}
 
 ## Figure 3: `polarization_validation_epj_phi_plus.png`
 
@@ -279,7 +309,7 @@ def run_clean_thesis_outputs(
         {
             "figure": "theta_ring_validation.png",
             "role": "Theta/ring tuning validation",
-            "dataset": "Karan et al. theta markers",
+            "dataset": "Karan et al. Figure 8 digitized literature data",
             "source_url": KARAN_SOURCE_URL,
             "metric_type": theta_report["metric_type"],
             "r_squared_agreement_percent": "",
@@ -288,7 +318,12 @@ def run_clean_thesis_outputs(
             "notes": (
                 "RMSE and MAE unavailable until ring radii are digitized."
                 if theta_report["points"] == 0
-                else f"RMSE={theta_report['rmse']:.4f}; MAE={theta_report['mae']:.4f}."
+                else (
+                    f"Paper experiment vs paper numerical panels: "
+                    f"RMSE={theta_report['rmse']:.4f} {theta_report['unit']}; "
+                    f"MAE={theta_report['mae']:.4f} {theta_report['unit']}; "
+                    "R² not reported for two annular points."
+                )
             ),
         },
         {

@@ -28,9 +28,13 @@ def test_polarization_fit_returns_finite_experimental_metrics():
 
 
 def test_theta_validation_accepts_marker_rows_without_digitized_radii(tmp_path):
-    rows = load_karan_theta_digitized(
-        ROOT / "data/external/karan_bbo_phase_matching/type1_theta_emccd_digitized.csv"
-    )
+    rows = [
+        {
+            "theta_p_deg": 28.64,
+            "experimental_ring_radius_mm_or_px": float("nan"),
+            "model_ring_radius_mm_or_px": float("nan"),
+        }
+    ]
     report = compare_theta_points(rows)
 
     assert report["points"] == 0
@@ -41,6 +45,20 @@ def test_theta_validation_accepts_marker_rows_without_digitized_radii(tmp_path):
     )
     assert (tmp_path / "theta_ring_validation.png").exists()
     assert plotted_report["rmse"] is None
+
+
+def test_theta_validation_reports_digitized_karan_annuli():
+    rows = load_karan_theta_digitized(
+        ROOT / "data/external/karan_bbo_phase_matching/type1_theta_emccd_digitized.csv"
+    )
+    report = compare_theta_points(rows)
+
+    assert report["points"] == 2
+    assert report["metric_type"] == "digitized_literature_data"
+    assert report["unit"] == "figure_px"
+    assert np.isclose(report["rmse"], 1.0)
+    assert np.isclose(report["mae"], 1.0)
+    assert report["direct_package_model_fit"] is False
 
 
 def test_clean_thesis_run_generates_only_expected_main_figures(tmp_path):
@@ -73,3 +91,8 @@ def test_clean_thesis_run_generates_only_expected_main_figures(tmp_path):
     )
     assert model_row["metric_type"] == "theory_only"
     assert model_row["r_squared_agreement_percent"] == ""
+    theta_row = next(
+        row for row in summary["figures"] if row["figure"] == "theta_ring_validation.png"
+    )
+    assert theta_row["metric_type"] == "digitized_literature_data"
+    assert theta_row["r_squared_agreement_percent"] == ""

@@ -111,6 +111,8 @@ def load_karan_theta_digitized(path: str | Path = DEFAULT_KARAN_PATH) -> list[di
                 "model_ring_radius_mm_or_px": _float(
                     row.get("model_ring_radius_mm_or_px")
                 ),
+                "radius_unit": row.get("radius_unit", ""),
+                "digitization_method": row.get("digitization_method", ""),
                 "notes": row.get("notes", ""),
                 "digitized": _bool(row.get("digitized", "")),
             }

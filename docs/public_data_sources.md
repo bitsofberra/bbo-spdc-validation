@@ -16,7 +16,7 @@ therefore be built from public, citable BBO SPDC datasets.
 
 | Source | Local file | Status | Use in thesis |
 | --- | --- | --- | --- |
-| Karan et al., "Phase matching in BBO crystals for SPDC" | `data/external/karan_bbo_phase_matching/type1_theta_emccd_digitized.csv` | Theta values `28.64`, `28.74`, `28.95` entered; radius cells blank | Main theta/ring figure uses literature theta markers only until radii are traceably digitized. |
+| Karan et al., "Phase matching in BBO crystals for SPDC" | `data/external/karan_bbo_phase_matching/type1_theta_emccd_digitized.csv` | Annular radii from Figure 8(b,c,e,f) digitized in `figure_px`; `28.64 deg` is a central blob without assigned annular radius | Main theta/ring figure reports paper-internal RMSE/MAE in pixels; it is not a calibrated package-model fit. |
 | BYU thesis, "Numerical Model of Non-collinear SPDC" | `data/external/byu_noncollinear_spdc/byu_fig3_3_digitized.csv` | Empty digitization template | Supplementary comparison only because wavelengths differ from the default configuration. |
 
 ## Not Final Experimental Evidence

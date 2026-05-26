@@ -68,16 +68,18 @@ def compute_theta_curve(
 
 
 def compare_theta_points(rows: list[dict]) -> dict:
-    """Compare paired digitized literature and model ring radii, when present."""
+    """Compare paired digitized experimental and paper-numerical ring radii."""
 
     measured = []
     predicted = []
+    units = set()
     for row in rows:
         experimental = row.get("experimental_ring_radius_mm_or_px", float("nan"))
         model = row.get("model_ring_radius_mm_or_px", float("nan"))
         if np.isfinite(experimental) and np.isfinite(model):
             measured.append(float(experimental))
             predicted.append(float(model))
+            units.add(row.get("radius_unit", "") or "unspecified")
     if not measured:
         return {
             "points": 0,
@@ -85,13 +87,22 @@ def compare_theta_points(rows: list[dict]) -> dict:
             "warning": "Karan theta values available, but ring radius values not digitized yet.",
             "rmse": None,
             "mae": None,
+            "unit": "",
+            "comparison_basis": "",
+            "direct_package_model_fit": False,
         }
+    unit = units.pop() if len(units) == 1 else "mixed_units"
     return {
         "points": len(measured),
         "metric_type": "digitized_literature_data",
         "warning": "",
         "rmse": rmse(measured, predicted),
         "mae": mae(measured, predicted),
+        "unit": unit,
+        "comparison_basis": (
+            "Karan Figure 8 experimental panels versus corresponding paper numerical panels"
+        ),
+        "direct_package_model_fit": False,
     }
 
 
@@ -161,28 +172,28 @@ def plot_theta_ring_validation(
     theta_max: float = 29.4,
     detector_distance_mm: float = 100.0,
 ) -> dict:
-    """Plot theta tuning curve with measured/digitized literature overlays when available."""
+    """Plot package theta model beside any scale-compatible literature digitization."""
 
     curve = compute_theta_curve(config, theta_min, theta_max, detector_distance_mm)
     report = compare_theta_points(karan_rows)
     has_digitized = report["points"] > 0
     literature_reference_theta_deg = 29.0
-    fig, ax = plt.subplots(figsize=(8.2, 4.9))
-    ax.plot(
+    fig, (model_ax, data_ax) = plt.subplots(1, 2, figsize=(12.2, 4.9))
+    model_ax.plot(
         curve.theta_deg,
         curve.ring_radius_mm,
         color="#0f766e",
         linewidth=2.3,
         label=f"Sellmeier model ({detector_distance_mm:.0f} mm plane)",
     )
-    ax.axvline(
+    model_ax.axvline(
         curve.theta_pm_deg,
         color="#111827",
         linestyle="--",
         linewidth=1.2,
         label=f"Calculated theta_PM = {curve.theta_pm_deg:.3f} deg",
     )
-    ax.axvline(
+    model_ax.axvline(
         literature_reference_theta_deg,
         color="#7c3aed",
         linestyle=":",
@@ -194,15 +205,21 @@ def plot_theta_ring_validation(
         dtype=float,
     )
     if theta_markers.size:
-        ax.scatter(
+        model_ax.scatter(
             theta_markers,
             np.zeros_like(theta_markers),
             marker="^",
             s=52,
             color="#b45309",
-            label="Karan et al. theta values only (no digitized radius)",
+            label="Karan theta locations (context)",
             zorder=4,
         )
+    model_ax.set_title("Package model: detector-plane radius")
+    model_ax.set_xlabel("BBO optic-axis angle theta_p (deg)")
+    model_ax.set_ylabel("Modeled ring radius (mm)")
+    model_ax.grid(alpha=0.22)
+    model_ax.legend(loc="lower right", fontsize=8)
+
     if has_digitized:
         digitized = [
             row
@@ -212,37 +229,76 @@ def plot_theta_ring_validation(
         ]
         x = np.array([row["theta_p_deg"] for row in digitized])
         y = np.array([row["experimental_ring_radius_mm_or_px"] for row in digitized])
+        paper_model = np.array([row["model_ring_radius_mm_or_px"] for row in digitized])
         errors = np.array([row["experimental_ring_radius_uncertainty"] for row in digitized])
         errors = None if not np.isfinite(errors).any() else np.nan_to_num(errors)
-        ax.errorbar(
+        data_ax.errorbar(
             x,
             y,
             yerr=errors,
             fmt="o",
             color="#b91c1c",
             capsize=3,
-            label="Digitized literature data",
+            label="Experimental panels (digitized)",
         )
-        title = "Model vs digitized literature data: Type-I BBO theta/ring tuning"
+        data_ax.plot(
+            x,
+            paper_model,
+            "s-",
+            color="#2563eb",
+            label="Paper numerical panels (digitized)",
+        )
+        blob_rows = [
+            row
+            for row in karan_rows
+            if np.isfinite(row["theta_p_deg"])
+            and not np.isfinite(row["experimental_ring_radius_mm_or_px"])
+        ]
+        if blob_rows:
+            data_ax.annotate(
+                "central blob;\nannular radius undefined",
+                xy=(blob_rows[0]["theta_p_deg"], 0),
+                xytext=(blob_rows[0]["theta_p_deg"] + 0.035, 6),
+                fontsize=8,
+                arrowprops={"arrowstyle": "-", "color": "#6b7280"},
+            )
+        data_ax.text(
+            0.04,
+            0.95,
+            (
+                f"RMSE = {report['rmse']:.1f} {report['unit']}\n"
+                f"MAE = {report['mae']:.1f} {report['unit']}\n"
+                "2 annular points; R² not reported"
+            ),
+            transform=data_ax.transAxes,
+            va="top",
+            fontsize=8.5,
+            bbox={"facecolor": "white", "edgecolor": "#e5e7eb", "alpha": 0.9},
+        )
+        title = "Model context and digitized literature comparison: Type-I BBO theta/ring tuning"
     else:
         title = "Theory model with literature theta markers: Type-I BBO theta/ring tuning"
-        ax.text(
+        data_ax.text(
             0.03,
-            0.94,
+            0.55,
             report["warning"],
-            transform=ax.transAxes,
-            va="top",
+            transform=data_ax.transAxes,
+            va="center",
             fontsize=9,
             bbox={"facecolor": "white", "edgecolor": "#e5e7eb", "alpha": 0.9},
         )
-    ax.set_title(title)
-    ax.set_xlabel("BBO optic-axis angle theta_p (deg)")
-    ax.set_ylabel("Model ring radius at detector plane (mm)")
-    ax.grid(alpha=0.22)
-    ax.legend(loc="lower right", fontsize=8.5)
+    data_ax.set_title("Digitized literature data: Karan Fig. 8")
+    data_ax.set_xlabel("BBO optic-axis angle theta_p (deg)")
+    data_ax.set_ylabel("Ring radial-peak radius (figure px)")
+    data_ax.set_xlim(theta_min, theta_max)
+    data_ax.set_ylim(bottom=-1)
+    data_ax.grid(alpha=0.22)
+    if has_digitized:
+        data_ax.legend(loc="lower right", fontsize=8)
+    fig.suptitle(title, fontsize=12)
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0, 1, 0.93))
     fig.savefig(output_path, dpi=220)
     plt.close(fig)
     return {
