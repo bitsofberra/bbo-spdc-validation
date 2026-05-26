@@ -23,7 +23,7 @@ from .phase_matching import (
     find_internal_emission_angle_deg,
     find_type1_phase_matching_angle_deg,
 )
-from .validation_metrics import mae, r2_score, rmse
+from .validation_metrics import mae, rmse
 
 
 KARAN_SOURCE_URL = "https://arxiv.org/abs/1810.01184"
@@ -109,58 +109,112 @@ def compare_theta_points(rows: list[dict]) -> dict:
 def _byu_valid_rows(rows: list[dict]) -> list[dict]:
     valid = []
     for row in rows:
-        theta = row.get("crystal_angle_axis_deg", float("nan"))
+        theta = row.get("crystal_angle_face_deg", float("nan"))
         if not np.isfinite(theta):
-            theta = row.get("crystal_angle_face_deg", float("nan"))
+            theta = row.get("crystal_angle_axis_deg", float("nan"))
         observed = row.get("observed_ring_diameter_no_lens_deg", float("nan"))
-        if np.isfinite(theta) and np.isfinite(observed):
-            valid.append({**row, "theta_deg": float(theta), "observed": float(observed)})
-    return valid
+        published_model = row.get("model_ring_diameter_deg", float("nan"))
+        if np.isfinite(theta) and np.isfinite(observed) and np.isfinite(published_model):
+            valid.append(
+                {
+                    **row,
+                    "theta_deg": float(theta),
+                    "observed": float(observed),
+                    "published_model": float(published_model),
+                }
+            )
+    return sorted(valid, key=lambda row: row["theta_deg"])
 
 
-def _byu_model_diameter(row: dict, theta_offset_deg: float = 0.0) -> float:
-    config = SPDCConfig(
-        pump_wavelength_m=float(row["pump_nm"]) * 1e-9,
-        signal_wavelength_m=float(row["daughter_nm"]) * 1e-9,
-        idler_wavelength_m=float(row["daughter_nm"]) * 1e-9,
-        theta_deg=float(row["theta_deg"]) + theta_offset_deg,
+def _sample_byu_published_model(
+    query_theta_deg: np.ndarray,
+    reference_theta_deg: np.ndarray,
+    reference_diameter_deg: np.ndarray,
+) -> np.ndarray:
+    """Interpolate the digitized BYU model curve, with linear edge extension."""
+
+    query = np.asarray(query_theta_deg, dtype=float)
+    sampled = np.interp(query, reference_theta_deg, reference_diameter_deg)
+    left_slope = (reference_diameter_deg[1] - reference_diameter_deg[0]) / (
+        reference_theta_deg[1] - reference_theta_deg[0]
     )
-    return 2.0 * _external_angle_or_zero(config, config.theta_deg)
+    right_slope = (reference_diameter_deg[-1] - reference_diameter_deg[-2]) / (
+        reference_theta_deg[-1] - reference_theta_deg[-2]
+    )
+    left = query < reference_theta_deg[0]
+    right = query > reference_theta_deg[-1]
+    sampled[left] = reference_diameter_deg[0] + left_slope * (
+        query[left] - reference_theta_deg[0]
+    )
+    sampled[right] = reference_diameter_deg[-1] + right_slope * (
+        query[right] - reference_theta_deg[-1]
+    )
+    return sampled
 
 
 def fit_theta_offset(rows: list[dict], fit_offset: bool = True) -> dict:
-    """Evaluate supplementary BYU ring diameter data and optional theta offset."""
+    """Compare digitized BYU CCD points with its published computational curve."""
 
     valid = _byu_valid_rows(rows)
     if not valid:
         return {
             "points": 0,
             "available": False,
-            "warning": "BYU CSV template contains no digitized ring diameter values.",
+            "warning": "BYU CSV contains no paired digitized ring-diameter/model values.",
         }
+    theta = np.array([row["theta_deg"] for row in valid], dtype=float)
     measured = np.array([row["observed"] for row in valid], dtype=float)
-    baseline = np.array([_byu_model_diameter(row) for row in valid])
+    published_model = np.array([row["published_model"] for row in valid], dtype=float)
+    baseline = _sample_byu_published_model(theta, theta, published_model)
     before_rmse = rmse(measured, baseline)
+    literature_offset_deg = 0.2
+    literature_offset_prediction = _sample_byu_published_model(
+        theta + literature_offset_deg, theta, published_model
+    )
     best_offset = 0.0
     after = baseline
     if fit_offset:
         candidates = np.linspace(-0.5, 0.5, 1001)
         scores = []
         for offset in candidates:
-            prediction = np.array([_byu_model_diameter(row, offset) for row in valid])
+            prediction = _sample_byu_published_model(theta + offset, theta, published_model)
             scores.append(rmse(measured, prediction))
         best_offset = float(candidates[int(np.argmin(scores))])
-        after = np.array([_byu_model_diameter(row, best_offset) for row in valid])
+        after = _sample_byu_published_model(theta + best_offset, theta, published_model)
+    uncertainties = [
+        row.get("digitization_uncertainty_deg", float("nan")) for row in valid
+    ]
+    finite_uncertainties = [value for value in uncertainties if np.isfinite(value)]
     report = {
         "points": len(valid),
         "available": True,
+        "metric_type": "digitized_literature_data",
+        "comparison_basis": (
+            "BYU Figure 3.3 observed CCD data without lens versus published computational curve"
+        ),
+        "primary_observed_series": "observed_ring_diameter_no_lens_deg",
+        "direct_package_model_fit": False,
+        "literature_reported_offset_deg": literature_offset_deg,
         "rmse_before_offset_deg": before_rmse,
+        "rmse_at_literature_offset_deg": rmse(measured, literature_offset_prediction),
         "rmse_after_offset_deg": rmse(measured, after),
         "mae_after_offset_deg": mae(measured, after),
         "delta_theta_offset_deg": best_offset,
+        "fit_offset_enabled": bool(fit_offset),
+        "fit_uses_linear_edge_extrapolation": bool(
+            np.any(theta + best_offset > theta[-1])
+            or np.any(theta + best_offset < theta[0])
+        ),
+        "digitization_uncertainty_deg": (
+            float(np.nanmax(finite_uncertainties)) if finite_uncertainties else None
+        ),
     }
-    if len(valid) >= 8:
-        report["r_squared_after_offset"] = r2_score(measured, after)
+    with_lens = np.array(
+        [row.get("observed_ring_diameter_with_lens_deg", float("nan")) for row in valid]
+    )
+    if np.isfinite(with_lens).all():
+        report["rmse_after_offset_with_lens_deg"] = rmse(with_lens, after)
+        report["mae_after_offset_with_lens_deg"] = mae(with_lens, after)
     return report
 
 
@@ -170,7 +224,7 @@ def plot_theta_ring_validation(
     output_path: str | Path,
     theta_min: float = 28.4,
     theta_max: float = 29.4,
-    detector_distance_mm: float = 100.0,
+    detector_distance_mm: float = 35.0,
 ) -> dict:
     """Plot package theta model beside any scale-compatible literature digitization."""
 
@@ -314,7 +368,7 @@ def plot_byu_ring_diameter_validation(
     output_path: str | Path,
     fit_offset_enabled: bool = False,
 ) -> dict:
-    """Generate supplementary BYU comparison only when digitized values exist."""
+    """Generate supplementary BYU paper-internal ring-diameter comparison."""
 
     report = fit_theta_offset(rows, fit_offset_enabled)
     if not report.get("available"):
@@ -322,29 +376,73 @@ def plot_byu_ring_diameter_validation(
     valid = _byu_valid_rows(rows)
     theta = np.array([row["theta_deg"] for row in valid])
     measured = np.array([row["observed"] for row in valid])
-    model = np.array(
-        [_byu_model_diameter(row, report["delta_theta_offset_deg"]) for row in valid]
+    with_lens = np.array([row["observed_ring_diameter_with_lens_deg"] for row in valid])
+    published_model = np.array([row["published_model"] for row in valid])
+    corrected_model = _sample_byu_published_model(
+        theta + report["delta_theta_offset_deg"], theta, published_model
     )
-    order = np.argsort(theta)
-    fig, ax = plt.subplots(figsize=(7.4, 4.5))
-    ax.scatter(theta, measured, color="#111827", label="Digitized BYU data")
-    ax.plot(theta[order], model[order], color="#0f766e", label="Model with theta offset")
+    uncertainties = np.array(
+        [row.get("digitization_uncertainty_deg", float("nan")) for row in valid]
+    )
+    uncertainties = None if not np.isfinite(uncertainties).any() else np.nan_to_num(uncertainties)
+    fig, ax = plt.subplots(figsize=(8.4, 5.1))
+    ax.errorbar(
+        theta,
+        measured,
+        yerr=uncertainties,
+        fmt="s",
+        color="#1d4ed8",
+        capsize=2,
+        label="CCD observed without lens (digitized)",
+    )
+    if np.isfinite(with_lens).all():
+        ax.scatter(
+            theta,
+            with_lens,
+            facecolors="none",
+            edgecolors="#dc2626",
+            label="CCD observed with lens (digitized)",
+        )
+    ax.plot(
+        theta,
+        published_model,
+        color="#059669",
+        linewidth=2,
+        label="Published computational curve (digitized)",
+    )
+    if fit_offset_enabled:
+        ax.plot(
+            theta,
+            corrected_model,
+            color="#7c3aed",
+            linestyle="--",
+            linewidth=1.8,
+            label="Computational curve sampled after fitted offset",
+        )
     ax.set_title("Model vs digitized literature data: supplementary BYU ring diameter")
-    ax.set_xlabel("Crystal-axis angle (deg)")
+    ax.set_xlabel("Crystal-face angle (deg; digitized from Figure 3.3)")
     ax.set_ylabel("Ring diameter (deg)")
+    metric_text = (
+        f"RMSE raw = {report['rmse_before_offset_deg']:.3f} deg\n"
+        f"RMSE at reported +0.200 deg = {report['rmse_at_literature_offset_deg']:.3f} deg"
+    )
+    if fit_offset_enabled:
+        metric_text += (
+            f"\nFitted offset = {report['delta_theta_offset_deg']:+.3f} deg"
+            f"\nRMSE fitted = {report['rmse_after_offset_deg']:.3f} deg"
+            f"\nMAE fitted = {report['mae_after_offset_deg']:.3f} deg"
+        )
     ax.text(
         0.04,
         0.95,
-        (
-            f"RMSE before: {report['rmse_before_offset_deg']:.3g} deg\n"
-            f"RMSE after: {report['rmse_after_offset_deg']:.3g} deg\n"
-            f"offset: {report['delta_theta_offset_deg']:.3g} deg"
-        ),
+        metric_text,
         transform=ax.transAxes,
         va="top",
+        fontsize=8.5,
+        bbox={"facecolor": "white", "edgecolor": "#e5e7eb", "alpha": 0.9},
     )
     ax.grid(alpha=0.22)
-    ax.legend()
+    ax.legend(loc="lower right", fontsize=8)
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.tight_layout()

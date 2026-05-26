@@ -76,7 +76,7 @@ The command creates these main figures:
 | `polarization_validation_testing_reality.png` | Polarization coincidence behavior | Testing Reality public CSV | R²-based agreement; RMSE | Main |
 | `spatial_ring_validation.png` | Spatial/ring geometry | Glasgow spatial matrices; JOSA B eccentricity context | Qualitative comparison | Main |
 | `supplementary/walkoff_effect.png` | Gaussian overlap and walk-off | None; numerical model | No experimental metric | Supplementary |
-| `supplementary/byu_ring_diameter_validation.png` | Non-collinear ring diameter | BYU digitized literature template | Offset-corrected RMSE when populated | Supplementary, conditional |
+| `supplementary/byu_ring_diameter_validation.png` | Non-collinear ring diameter | BYU Figure 3.3 digitized literature data | Offset-corrected RMSE/MAE; no R² claim | Supplementary |
 | `supplementary/spatial_eccentricity_summary.csv` | Type-I BBO ring circularity | JOSA B Table 1 | Reported eccentricity | Supplementary |
 
 It also creates:
@@ -86,11 +86,14 @@ It also creates:
 - `polarization_validation_epj_phi_plus.csv`
 
 `R²-based agreement (%)` replaces the earlier fit-percentage wording and is
-used only for real experimental polarization fits. Theory-only figures have no
+used for the real experimental polarization fits. Theory-only figures have no
 experimental agreement value. The theta figure reports a traceable,
 paper-internal comparison of digitized Karan experimental and numerical panels
 in `figure_px`; it is not a calibrated fit of those pixels to the package model
-curve in millimetres.
+curve in millimetres. Its separate package-model panel uses Karan's reported
+`z = 35 mm` EMCCD distance. The supplementary BYU fit reports RMSE/MAE only because
+its offset-corrected digitized curve requires a documented linear edge
+extension.
 
 ## Experimental and External Data
 
@@ -111,16 +114,16 @@ bbo-spdc validate-spatial --out outputs/spatial_validation
 | Glasgow pixel-super-resolution collection | `data/external/glasgow_pixel_superresolution/Pixelsuperresolution.zip` | Qualitative public spatial/camera comparison; not a calibrated free-space ring scan |
 | JOSA B elliptical-rings Table 1 | `data/external/josa_b_elliptical_rings/bbo_eccentricity_table1.csv` | Published BBO near-circular ring eccentricity context |
 
-### Digitized Literature Templates
+### Digitized Literature Data
 
 ```bash
-bbo-spdc validate-theta --out outputs/theta_validation
+bbo-spdc validate-theta --out outputs/theta_validation --fit-offset
 ```
 
 | Source | Template | Current status |
 | --- | --- | --- |
 | Karan et al. Type-I BBO EMCCD images | `data/external/karan_bbo_phase_matching/type1_theta_emccd_digitized.csv` | Figure 8 annular radii digitized in `figure_px`; 28.64 deg central blob retained without an annular radius |
-| BYU non-collinear SPDC thesis | `data/external/byu_noncollinear_spdc/byu_fig3_3_digitized.csv` | Empty template; supplementary only because wavelengths differ |
+| BYU non-collinear SPDC thesis | `data/external/byu_noncollinear_spdc/byu_fig3_3_digitized.csv` | Figure 3.3 CCD and published-model ring diameters digitized; supplementary only because wavelengths differ |
 
 No numerical literature values are entered unless they are traceably reported
 or digitized from a cited source.
@@ -137,7 +140,7 @@ Implemented and tested:
 - supplementary pump walk-off model
 - corrected-coincidence polarization fits for balanced `Phi+` and unbalanced correlated states
 - Glasgow spatial-matrix loading with qualitative profile visualization
-- JOSA B eccentricity summary and optional BYU supplementary loader
+- JOSA B eccentricity summary and BYU Figure 3.3 supplementary ring-diameter validation
 - cleaned `thesis-run`, `validate-theta`, `validate-polarization`, and `validate-spatial` commands
 
 Automated tests:
@@ -156,6 +159,7 @@ Experimental and literature sources:
 - Glasgow research data collection: <https://researchdata.gla.ac.uk/1269/>
 - Guilbert, Wong, and Gauthier, JOSA B: <https://opg.optica.org/josab/abstract.cfm?uri=josab-32-10-2096>
 - BYU thesis supplementary lead: <https://physics.byu.edu/docs/thesis/103>
+- Couteau, "Spontaneous parametric down-conversion" (theory/review source): <https://doi.org/10.1080/00107514.2018.1488463>
 
 Code inspiration:
 

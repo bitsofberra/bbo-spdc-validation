@@ -20,6 +20,11 @@ panel label was masked, and the ring radius was read as the peak of the
 radially averaged intensity profile. A conservative `+/- 1.0 figure_px`
 reading uncertainty is assigned.
 
+Figure 8 also prints `alpha = 0.33 deg`, `0.49 deg`, and `0.82 deg`. In the
+paper's Section 2.6, `alpha` is defined as the non-normal pump incidence angle
+on the rotated crystal surface. It is therefore not treated as a measured ring
+radius or an external emission-angle dataset.
+
 At `theta_p = 28.64 deg`, both relevant panels show a central blob rather than
 an annulus, so no ring radius is assigned. The two annular pairs provide a
 paper-internal experiment-versus-numerical comparison:

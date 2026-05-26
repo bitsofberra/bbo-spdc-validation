@@ -5,10 +5,18 @@ from pathlib import Path
 
 import numpy as np
 
-from bbo_spdc.data_loaders import load_epj_phi_plus_table11, load_karan_theta_digitized
+from bbo_spdc.data_loaders import (
+    load_byu_digitized,
+    load_epj_phi_plus_table11,
+    load_karan_theta_digitized,
+)
 from bbo_spdc.phase_matching import SPDCConfig
 from bbo_spdc.polarization_validation import fit_polarization_model
-from bbo_spdc.theta_validation import compare_theta_points, plot_theta_ring_validation
+from bbo_spdc.theta_validation import (
+    compare_theta_points,
+    fit_theta_offset,
+    plot_theta_ring_validation,
+)
 from bbo_spdc.thesis_outputs import run_clean_thesis_outputs
 
 
@@ -61,6 +69,21 @@ def test_theta_validation_reports_digitized_karan_annuli():
     assert report["direct_package_model_fit"] is False
 
 
+def test_byu_digitized_ring_diameter_fit_is_supplementary_paper_comparison():
+    rows = load_byu_digitized(
+        ROOT / "data/external/byu_noncollinear_spdc/byu_fig3_3_digitized.csv"
+    )
+    report = fit_theta_offset(rows, fit_offset=True)
+
+    assert len(rows) == 10
+    assert report["points"] == 10
+    assert report["metric_type"] == "digitized_literature_data"
+    assert report["direct_package_model_fit"] is False
+    assert report["rmse_after_offset_deg"] < report["rmse_before_offset_deg"]
+    assert report["fit_uses_linear_edge_extrapolation"] is True
+    assert "r_squared_after_offset" not in report
+
+
 def test_clean_thesis_run_generates_only_expected_main_figures(tmp_path):
     output = tmp_path / "thesis_run"
     run_clean_thesis_outputs(
@@ -84,6 +107,7 @@ def test_clean_thesis_run_generates_only_expected_main_figures(tmp_path):
     }
     assert not (output / "entangled_counter_demo.png").exists()
     assert not (output / "spdc_ring_simulation.png").exists()
+    assert (output / "supplementary/byu_ring_diameter_validation.png").exists()
 
     summary = json.loads((output / "validation_summary.json").read_text(encoding="utf-8"))
     model_row = next(
@@ -96,3 +120,10 @@ def test_clean_thesis_run_generates_only_expected_main_figures(tmp_path):
     )
     assert theta_row["metric_type"] == "digitized_literature_data"
     assert theta_row["r_squared_agreement_percent"] == ""
+    byu_row = next(
+        row
+        for row in summary["figures"]
+        if row["figure"] == "supplementary/byu_ring_diameter_validation.png"
+    )
+    assert byu_row["metric_type"] == "digitized_literature_data"
+    assert byu_row["r_squared_agreement_percent"] == ""

@@ -121,7 +121,7 @@ def load_karan_theta_digitized(path: str | Path = DEFAULT_KARAN_PATH) -> list[di
 
 
 def load_byu_digitized(path: str | Path = DEFAULT_BYU_PATH) -> list[dict]:
-    """Load optional digitized BYU non-collinear ring-diameter values."""
+    """Load digitized BYU non-collinear ring-diameter comparison values."""
 
     fields = [
         "pump_nm",
@@ -144,6 +144,10 @@ def load_byu_digitized(path: str | Path = DEFAULT_BYU_PATH) -> list[dict]:
             "figure": row.get("figure", ""),
             "notes": row.get("notes", ""),
             "digitized": _bool(row.get("digitized", "")),
+            "digitization_uncertainty_deg": _float(
+                row.get("digitization_uncertainty_deg")
+            ),
+            "digitization_method": row.get("digitization_method", ""),
         }
         parsed.update({field: _float(row.get(field)) for field in fields})
         rows.append(parsed)

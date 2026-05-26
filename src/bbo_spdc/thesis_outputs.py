@@ -107,6 +107,31 @@ def _write_summary_markdown(path: Path, rows: list[dict], reports: dict) -> None
             "The repository stores these literature theta markers; no ring-radius metric is "
             "calculated until traceable digitized radii are entered."
         )
+    byu_report = reports["byu_supplementary"]
+    byu_lines = []
+    if byu_report.get("available"):
+        byu_lines = [
+            "",
+            "## Supplementary BYU Ring-Diameter Note",
+            "",
+            (
+                "Dustin Shipp's BYU Figure 3.3 was digitized as a supplementary "
+                "literature comparison because it uses a `351 nm` pump and "
+                "`690 +/- 5 nm` selected photons, not the default `405 nm / 810 nm` "
+                "configuration. The primary metric compares CCD observations without "
+                "the focusing lens to the published computational curve. "
+                f"The thesis discusses a possible `+0.200 deg` crystal-angle offset "
+                f"(`RMSE = {byu_report['rmse_at_literature_offset_deg']:.3f} deg`); "
+                f"fitting the digitized curves gives an offset of "
+                f"`{byu_report['delta_theta_offset_deg']:+.3f} deg`, "
+                f"`RMSE = {byu_report['rmse_after_offset_deg']:.3f} deg`, and "
+                f"`MAE = {byu_report['mae_after_offset_deg']:.3f} deg`. "
+                "The fitted comparison uses linear extension of the digitized "
+                "curve at its edge, so no R² claim is made. "
+                "This is a paper-internal digitized comparison, not a direct fit of "
+                "the package's default wavelength model."
+            ),
+        ]
     lines = [
         "# Validation Summary",
         "",
@@ -128,6 +153,7 @@ def _write_summary_markdown(path: Path, rows: list[dict], reports: dict) -> None
             "",
             reports["theta"].get("warning", ""),
             theta_note,
+            *byu_lines,
             "",
             "## Spatial Validation Note",
             "",
@@ -151,11 +177,14 @@ def _write_summary_markdown(path: Path, rows: list[dict], reports: dict) -> None
     path.write_text("\n".join(line for line in lines if line is not None) + "\n", encoding="utf-8")
 
 
-def _write_figure_captions(path: Path, theta_report: dict, spatial_report: dict) -> None:
+def _write_figure_captions(
+    path: Path, theta_report: dict, byu_report: dict, spatial_report: dict
+) -> None:
     if theta_report["points"]:
         theta_caption = (
-            "The left panel shows the package Sellmeier model in detector-plane "
-            "millimetres. The right panel shows digitized literature data from Karan "
+            "The left panel shows the package Sellmeier model at the reported "
+            "`z = 35 mm` EMCCD plane in millimetres. The right panel shows "
+            "digitized literature data from Karan "
             "et al. Figure 8: experimental annular radial-peak radii and the "
             "corresponding numerical-panel radii in figure pixels. For two annular "
             f"points, RMSE is `{theta_report['rmse']:.1f} {theta_report['unit']}` and "
@@ -170,6 +199,20 @@ def _write_figure_captions(path: Path, theta_report: dict, spatial_report: dict)
             "provides literature-linked visual context rather than a numerical "
             "ring-radius fit."
         )
+    byu_caption = ""
+    if byu_report.get("available"):
+        byu_caption = f"""
+## Supplementary: `supplementary/byu_ring_diameter_validation.png`
+
+Model vs digitized literature data from Dustin Shipp's BYU Figure 3.3. The
+observed CCD ring-diameter series and the thesis's published computational
+curve use a `351 nm` pump and `690 +/- 5 nm` selected photons; this differs
+from the main `405 nm / 810 nm` configuration. Applying the fitted angular
+offset gives `RMSE = {byu_report['rmse_after_offset_deg']:.3f} deg` and
+`MAE = {byu_report['mae_after_offset_deg']:.3f} deg`. The offset-corrected
+comparison uses linear extension at the edge of the digitized computational
+curve; no R² is assigned.
+"""
     captions = f"""# Figure Captions
 
 ## Figure 1: `model_sinc2_phase_matching.png`
@@ -209,6 +252,7 @@ a calibrated free-space ring scan, so radial profiles are shown as normalized
 shape context only and no direct radius RMSE is reported. The selected matrix
 is `{spatial_report.get('experimental_matrix', '')}`.
 
+{byu_caption}
 ## Supplementary: `supplementary/walkoff_effect.png`
 
 Theory-only illustration of pump spatial walk-off and Gaussian-overlap loss.
@@ -252,7 +296,7 @@ def run_clean_thesis_outputs(
     byu_report = plot_byu_ring_diameter_validation(
         byu_rows,
         supplementary / "byu_ring_diameter_validation.png",
-        fit_offset_enabled=fit_offset,
+        fit_offset_enabled=True if byu_rows else fit_offset,
     )
 
     epj_rows = load_epj_phi_plus_table11(epj_data)
@@ -370,6 +414,26 @@ def run_clean_thesis_outputs(
             "notes": "No direct metric: optical radius calibration unavailable.",
         },
     ]
+    if byu_report.get("available"):
+        summary_rows.append(
+            {
+                "figure": "supplementary/byu_ring_diameter_validation.png",
+                "role": "Supplementary theta/ring diameter validation",
+                "dataset": "Dustin Shipp BYU Figure 3.3 digitized literature data",
+                "source_url": "https://physics.byu.edu/docs/thesis/103",
+                "metric_type": "digitized_literature_data",
+                "r_squared_agreement_percent": "",
+                "rmse": _fmt(byu_report["rmse_after_offset_deg"]),
+                "mae": _fmt(byu_report["mae_after_offset_deg"]),
+                "notes": (
+                    f"Offset-corrected RMSE={byu_report['rmse_after_offset_deg']:.4f} deg; "
+                    f"MAE={byu_report['mae_after_offset_deg']:.4f} deg; "
+                    f"fitted offset={byu_report['delta_theta_offset_deg']:+.4f} deg; "
+                    "linear edge extension used; no R² assigned; supplementary "
+                    "wavelengths differ from the main configuration."
+                ),
+            }
+        )
     reports = {
         "theta": theta_report,
         "byu_supplementary": byu_report,
@@ -383,5 +447,7 @@ def run_clean_thesis_outputs(
         encoding="utf-8",
     )
     _write_summary_markdown(output / "validation_summary.md", summary_rows, reports)
-    _write_figure_captions(output / "figure_captions.md", theta_report, spatial_report)
+    _write_figure_captions(
+        output / "figure_captions.md", theta_report, byu_report, spatial_report
+    )
     return reports
